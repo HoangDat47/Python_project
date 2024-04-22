@@ -45,7 +45,6 @@ def load_csv_file():
         dataset_tree.insert("", "end", values=list(row))
     dataset_tree.grid(row=0, column=0, sticky="nsew")
     label_count_cr.config(text=str1)
-      
     
 def drop_column():
     selected_item = dataset_tree.selection()

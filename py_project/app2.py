@@ -5,13 +5,23 @@ from tkinter import ttk
 from tkinter import filedialog
 import os
 
+from sklearn.linear_model import LinearRegression, LogisticRegression
+from sklearn.metrics import accuracy_score, mean_squared_error, r2_score
+from sklearn.model_selection import train_test_split
+from sklearn.neighbors import KNeighborsClassifier
+from sklearn.preprocessing import LabelEncoder
+
 root = tk.Tk()
-root.title('App version 1.3.2')
+root.title('App version 1.3.4')
+
+my_ref={} # to store references to checkboxes 
+i=1
+column_search=[] # To store the checkbuttons which are checked
 
 left_frame = tk.LabelFrame(root, text='Choose File')
 left_frame.grid(row=0, column=0, padx=10, pady=10)
 
-right_frame = tk.LabelFrame(root, text='Model')
+right_frame = tk.LabelFrame(root)
 right_frame.grid(row=0, column=1, padx=10, pady=10)
 
 tabControl = ttk.Notebook(right_frame)
@@ -22,6 +32,7 @@ tabControl.add(tab1, text='Data')
 tabControl.add(tab2, text='Visualize')
 tabControl.grid(row=0, column=0, columnspan=2)
 
+# Data tab
 my_font1 = ('times', 12, 'bold')
 path_label = tk.Label(left_frame, text='Read File & create DataFrame',
                       width=30, font=my_font1)
@@ -32,9 +43,34 @@ browse_btn.grid(row=2, column=1, pady=5)
 count_label = tk.Label(tab1, width=40, text='',
                        bg='lightyellow')
 count_label.grid(row=3, column=1, padx=5)
-search_entry = tk.Entry(tab1, width=35, bg="yellow", font=18)  # added one Entry box
+search_entry = tk.Entry(tab1, width=35, font=18)  # added one Entry box
 search_entry.grid(row=4, column=1, padx=1)
 
+# Visualize tab
+target_label = tk.Label(tab2, text="Select Target Variable")
+target_label.grid(row=0, column=0, padx=5, sticky=tk.W)
+
+target_combobox = ttk.Combobox(tab2)
+target_combobox.grid(row=1, column=0, padx=5, pady=5, sticky=tk.W)
+
+input_label = tk.Label(tab2, text="Select Input Variables")
+input_label.grid(row=2, column=0, padx=5, sticky=tk.W)
+
+input_label_cb = tk.Label(tab2)
+input_label_cb.grid(row=3, column=0, padx=5, sticky=tk.W)
+
+model_label = tk.Label(tab2, text="Chọn Model")
+model_label.grid(row=0, column=3, padx=50, pady=10, sticky=tk.W)
+
+model_combobox = ttk.Combobox(
+    tab2, values=["Logistic Regression", "KNN", "Linear Regression"]
+)
+model_combobox.grid(row=1, column=3, padx=50, sticky=tk.W)
+
+execution_button = tk.Button(tab2, text="Execution")
+execution_button.grid(row=2, column=3, padx=50, pady=10, sticky=tk.W)
+
+# Data functions
 def upload_file():
     global df, tree_list
     f_types = [('CSV files', "*.csv"), ('All', "*.*")]
@@ -47,6 +83,8 @@ def upload_file():
     count_label.config(text=str1)
     trv_refresh()  # show Treeview
     search_entry.bind('<KeyRelease>', lambda event: my_search())
+    target_combobox["values"] = tree_list
+    my_columns()
 
 def my_search():
     query = search_entry.get().strip().lower()  # Lấy giá trị từ Entry và chuyển về chữ thường
@@ -83,9 +121,20 @@ def trv_refresh(r_set=None):  # Refresh the Treeview to reflect changes
         v = [r for r in dt]
         trv.insert("", 'end', iid=v[0], values=v)
 
-    vs = ttk.Scrollbar(root, orient="vertical", command=trv.yview)
+    vs = ttk.Scrollbar(tab1, orient="vertical", command=trv.yview)
     trv.configure(yscrollcommand=vs.set)  # connect to Treeview
     vs.grid(row=5, column=4, sticky='ns')  # Place on grid
 
+# Visualize functions
+def my_columns():
+    global i,my_ref
+    i=1 # to increase the column number
+    my_ref={} # to store references to checkboxes
+    input_label_cb.config(text=" ") #Remove the previous checkboxes
+    for column in tree_list:
+        my_ref[column] = IntVar()
+        cb = Checkbutton(tab2, text=column, variable=my_ref[column])
+        cb.grid(row=i+3, column=0, padx=5, sticky=tk.W)
+        i+=1 
 
 root.mainloop()  # Keep the window open
