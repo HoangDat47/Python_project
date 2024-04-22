@@ -1,9 +1,10 @@
 import pandas as pd
 import tkinter as tk
 from tkinter import *
-from tkinter import Button, Label, filedialog, messagebox, ttk
+from tkinter import filedialog, messagebox, ttk
 import os
 import traceback
+import numpy as np
 
 from sklearn.linear_model import LinearRegression, LogisticRegression
 from sklearn.metrics import accuracy_score, mean_squared_error, r2_score
@@ -11,8 +12,15 @@ from sklearn.model_selection import train_test_split
 from sklearn.neighbors import KNeighborsClassifier
 from sklearn.preprocessing import LabelEncoder
 
+from keras.utils import to_categorical
+from keras_preprocessing.image import load_img
+from keras.models import Sequential, model_from_json
+from keras.layers import Dense, Conv2D, Dropout, Flatten, MaxPooling2D, Input
+
+from tqdm.notebook import tqdm
+
 root = tk.Tk()
-root.title('App version 1.3.4')
+root.title('App version 1.3.6')
 
 my_ref={} # to store references to checkboxes 
 i=1
@@ -141,7 +149,40 @@ def execute_model():
         r2 = str(r2_score(y_test, y_pred))
         messagebox.showinfo("Model Result", f"Mean Squared Error: {r2}")
 
+def create_cnn_df():
+    image_paths = []
+    labels = []
+    for label in os.listdir(dir):
+        for imagename in os.listdir(os.path.join(dir,label)):
+            image_paths.append(os.path.join(dir,label,imagename))
+            labels.append(label)
+        print(label, "completed")
+    return image_paths,labels
 
+def choose_train_dir():
+    global train, TRAIN_DIR
+    TRAIN_DIR = filedialog.askdirectory()
+    train_dir_label.config(text=TRAIN_DIR)
+    train = pd.DataFrame()
+    train['image'], train['label'] = create_cnn_df(TRAIN_DIR)
+
+def choose_test_dir():
+    global test, TEST_DIR
+    TEST_DIR = filedialog.askdirectory()
+    test_dir_label.config(text=TEST_DIR)
+    test = pd.DataFrame()
+    test['image'], test['label'] = create_cnn_df(TEST_DIR)
+    
+def extract_features(images):
+    features = []
+    for image in tqdm(images):
+        img = load_img(image, color_mode='grayscale', target_size=(48,48))
+        img = np.array(img)
+        features.append(img)
+    features = np.array(features)
+    features = features.reshape(len(features),48,48,1)
+    return features
+    
 # GUI
 left_frame = tk.LabelFrame(root, text='Choose File')
 left_frame.grid(row=0, column=0, padx=10, pady=10)
@@ -152,9 +193,11 @@ right_frame.grid(row=0, column=1, padx=10, pady=10)
 tabControl = ttk.Notebook(right_frame)
 tab1 = ttk.Frame(tabControl)
 tab2 = ttk.Frame(tabControl)
+tab3 = ttk.Frame(tabControl)
 
 tabControl.add(tab1, text='Data')
 tabControl.add(tab2, text='Visualize')
+tabControl.add(tab3, text='CNN picture classification')
 tabControl.grid(row=0, column=0, columnspan=2)
 
 # Data tab
@@ -184,7 +227,7 @@ input_label.grid(row=2, column=0, padx=5, sticky=tk.W)
 input_label_cb = tk.Label(tab2)
 input_label_cb.grid(row=3, column=0, padx=5, sticky=tk.W)
 
-model_label = tk.Label(tab2, text="Chọn Model")
+model_label = tk.Label(tab2, text="Choose Model")
 model_label.grid(row=0, column=3, padx=50, pady=10, sticky=tk.W)
 
 model_combobox = ttk.Combobox(
@@ -194,6 +237,19 @@ model_combobox.grid(row=1, column=3, padx=50, sticky=tk.W)
 
 execution_button = tk.Button(tab2, text="Execution", command=execute_model)
 execution_button.grid(row=2, column=3, padx=50, pady=10, sticky=tk.W)
-    
+
+# CNN tab
+
+train_dir_label = tk.Label(tab3, text="Train Directory")
+train_dir_label.grid(row=0, column=0, padx=5, sticky=tk.W)
+
+train_dir_btn = tk.Button(tab3, text="Browse", command=choose_train_dir)
+train_dir_btn.grid(row=0, column=1, padx=5, sticky=tk.W)
+
+test_dir_label = tk.Label(tab3, text="Test Directory")
+test_dir_label.grid(row=1, column=0, padx=5, sticky=tk.W)
+
+test_dir_btn = tk.Button(tab3, text="Browse", command=choose_test_dir)
+test_dir_btn.grid(row=1, column=1, padx=5, sticky=tk.W)
 
 root.mainloop()  # Keep the window open
