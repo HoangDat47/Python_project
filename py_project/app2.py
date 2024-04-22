@@ -149,7 +149,7 @@ def execute_model():
         r2 = str(r2_score(y_test, y_pred))
         messagebox.showinfo("Model Result", f"Mean Squared Error: {r2}")
 
-def create_cnn_df():
+def create_cnn_df(dir):
     image_paths = []
     labels = []
     for label in os.listdir(dir):
@@ -182,6 +182,53 @@ def extract_features(images):
     features = np.array(features)
     features = features.reshape(len(features),48,48,1)
     return features
+
+def train_model():
+    train_features = extract_features(train['image'])
+    test_features = extract_features(test['image'])
+    
+    x_train = train_features/255.0
+    x_test = test_features/255.0
+    
+    le = LabelEncoder()
+    le.fit(train['label'])
+    
+    y_train = le.transform(train['label'])
+    y_test = le.transform(test['label'])
+    
+    y_train = to_categorical(y_train, num_classes=7)
+    y_test = to_categorical(y_test, num_classes=7)
+    
+    model = Sequential()
+    model.add(Input(shape=(48,48,1)))
+
+    model.add(Conv2D(128, kernel_size=(3,3), activation='relu'))
+    model.add(MaxPooling2D(pool_size=(2,2)))
+    model.add(Dropout(0.4))
+
+    model.add(Conv2D(256, kernel_size=(3,3), activation='relu'))
+    model.add(MaxPooling2D(pool_size=(2,2)))
+    model.add(Dropout(0.4))
+
+    model.add(Conv2D(512, kernel_size=(3,3), activation='relu'))
+    model.add(MaxPooling2D(pool_size=(2,2)))
+    model.add(Dropout(0.4))
+
+    model.add(Conv2D(512, kernel_size=(3,3), activation='relu'))
+    model.add(MaxPooling2D(pool_size=(2,2)))
+    model.add(Dropout(0.4))
+    
+    model.add(Flatten())
+    
+    model.add(Dense(128, activation='relu'))
+    model.add(Dropout(0.2))
+    model.add(Dense(128, activation='relu'))
+    model.add(Dropout(0.2))
+    
+    model.add(Dense(7, activation='softmax'))
+    
+    model.compile(optimizer='adam', loss='categorical_crossentropy', metrics=['accuracy'])
+    model.fit(x_train, y_train, epochs=5, batch_size=64, validation_data=(x_test, y_test))
     
 # GUI
 left_frame = tk.LabelFrame(root, text='Choose File')
@@ -197,7 +244,7 @@ tab3 = ttk.Frame(tabControl)
 
 tabControl.add(tab1, text='Data')
 tabControl.add(tab2, text='Visualize')
-tabControl.add(tab3, text='CNN picture classification')
+tabControl.add(tab3, text='CNN model for classification')
 tabControl.grid(row=0, column=0, columnspan=2)
 
 # Data tab
@@ -241,15 +288,18 @@ execution_button.grid(row=2, column=3, padx=50, pady=10, sticky=tk.W)
 # CNN tab
 
 train_dir_label = tk.Label(tab3, text="Train Directory")
-train_dir_label.grid(row=0, column=0, padx=5, sticky=tk.W)
+train_dir_label.grid(row=0, column=0, padx=5, pady=5, sticky=tk.W)
 
 train_dir_btn = tk.Button(tab3, text="Browse", command=choose_train_dir)
-train_dir_btn.grid(row=0, column=1, padx=5, sticky=tk.W)
+train_dir_btn.grid(row=0, column=1, padx=5, pady=5, sticky=tk.W)
 
 test_dir_label = tk.Label(tab3, text="Test Directory")
-test_dir_label.grid(row=1, column=0, padx=5, sticky=tk.W)
+test_dir_label.grid(row=1, column=0, padx=5, pady=5, sticky=tk.W)
 
 test_dir_btn = tk.Button(tab3, text="Browse", command=choose_test_dir)
-test_dir_btn.grid(row=1, column=1, padx=5, sticky=tk.W)
+test_dir_btn.grid(row=1, column=1, padx=5, pady=5, sticky=tk.W)
+
+train_model_btn = tk.Button(tab3, text="Train", width=20, command=train_model)
+train_model_btn.grid(row=2, column=1, padx=5, pady=5, sticky=tk.W)
 
 root.mainloop()  # Keep the window open
