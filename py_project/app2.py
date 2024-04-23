@@ -25,6 +25,7 @@ root.title('App version 1.3.6')
 my_ref={} # to store references to checkboxes 
 i=1
 selected_checkboxes = [] # To store the checkbuttons which are checked
+data_types = ["int64", "float64", "object"]
 
 # Data functions
 def upload_file():
@@ -41,6 +42,16 @@ def upload_file():
     search_entry.bind('<KeyRelease>', lambda event: my_search())
     target_combobox["values"] = tree_list
     my_columns()
+    
+    # Transform tab
+    for dtype in data_types:  # Loop through data types
+        # Lọc các cột theo định dạng dữ liệu dtype
+        columns = [col for col in df.columns if df[col].dtype == dtype]
+        # Tạo danh sách tên cột cùng với định dạng dữ liệu của chúng
+        columns_with_dtype = [f"{col} {{{dtype}}}" for col in columns]
+        # Thêm danh sách cột vào Listbox
+        for col in columns_with_dtype:
+            transform_list.insert(tk.END, col)
 
 def my_search():
     query = search_entry.get().strip().lower()  # Lấy giá trị từ Entry và chuyển về chữ thường
@@ -241,10 +252,12 @@ tabControl = ttk.Notebook(right_frame)
 tab1 = ttk.Frame(tabControl)
 tab2 = ttk.Frame(tabControl)
 tab3 = ttk.Frame(tabControl)
+tab4 = ttk.Frame(tabControl)
 
 tabControl.add(tab1, text='Data')
 tabControl.add(tab2, text='Visualize')
 tabControl.add(tab3, text='CNN model for classification')
+tabControl.add(tab4, text='Transform')
 tabControl.grid(row=0, column=0, columnspan=2)
 
 # Data tab
@@ -301,5 +314,12 @@ test_dir_btn.grid(row=1, column=1, padx=5, pady=5, sticky=tk.W)
 
 train_model_btn = tk.Button(tab3, text="Train", width=20, command=train_model)
 train_model_btn.grid(row=2, column=1, padx=5, pady=5, sticky=tk.W)
+
+# Transform tab
+transform_label = tk.Label(tab4, text="Select variables(s): ")
+transform_label.grid(row=0, column=0, padx=5, pady=5, sticky=tk.W)
+
+transform_list = tk.Listbox(tab4, height=5, selectmode=tk.SINGLE)
+transform_list.grid(row=1, column=0, padx=5, pady=5, sticky=tk.W + tk.E + tk.N + tk.S)
 
 root.mainloop()  # Keep the window open
