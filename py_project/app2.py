@@ -6,6 +6,8 @@ from tkinter import filedialog, messagebox, ttk
 import os
 import traceback
 import numpy as np
+import seaborn as sns
+import matplotlib.pyplot as plt
 
 from sklearn.linear_model import LinearRegression, LogisticRegression
 from sklearn.metrics import accuracy_score, mean_squared_error, r2_score
@@ -122,8 +124,7 @@ def my_columns():
 def execute_model():
     global model_train  # Di chuyển câu lệnh global lên đầu hàm
     target_variable = target_combobox.get()
-    input_variables = [column for column,
-                       var in selected_checkboxes if var.get() == 1]
+    input_variables = [column for column, var in selected_checkboxes if var.get() == 1]
     le = LabelEncoder()
 
     # if input variable is categorical convert to numerical
@@ -132,6 +133,7 @@ def execute_model():
             df[column] = le.fit_transform(df[column])
     if df[target_variable].dtype == "object":
         df[target_variable] = le.fit_transform(df[target_variable])
+    
     # convert to list
     input_variables = list(input_variables)
     # delete item in list empty
@@ -157,23 +159,34 @@ def execute_model():
     elif model == "Linear Regression":
         model_train = LinearRegression()
         print("Linear Regression")
+    
     model_train.fit(X_train, y_train)
     y_pred = model_train.predict(X_test)
 
-    if isinstance(model_train, LogisticRegression) or isinstance(
-        model_train, KNeighborsClassifier
-    ):
+    if isinstance(model_train, LogisticRegression) or isinstance(model_train, KNeighborsClassifier):
         try:
             accuracy = accuracy_score(y_test, y_pred)
-            messagebox.showinfo("Model Result", f"Accuracy: {accuracy}")
-        except:
-            print("error")
-
+            # Heatmap with selected columns
+            selected_columns_df = df[input_variables + [target_variable]]
+            plt.figure(figsize=(10, 6))
+            sns.heatmap(selected_columns_df.corr(), annot=True, cmap="coolwarm", fmt=".2f")
+            plt.title("Correlation Heatmap for Selected Columns")
+            plt.text(0.5, 0.95, f"Accuracy: {accuracy}", ha='center', va='top', transform=plt.gca().transAxes, fontsize=10)
+            plt.show()
+        except Exception as e:
+            print("Error:", e)
     elif isinstance(model_train, LinearRegression):
-        r2 = str(r2_score(y_test, y_pred))
-        messagebox.showinfo("Model Result", f"Mean Squared Error: {r2}")
-
-
+        # Calculate R-squared
+        r2 = r2_score(y_test, y_pred)
+        # Scatter plot
+        plt.scatter(y_test, y_pred)
+        plt.plot(y_test, y_test, color='red', linewidth=2)
+        plt.xlabel("Actual")
+        plt.ylabel("Predicted")
+        plt.title("Scatter plot")
+        plt.text(0.5, 0.95, f"R-squared: {r2}", ha='center', va='top', transform=plt.gca().transAxes, fontsize=10)
+        plt.show()
+        
 def create_cnn_df(dir):
     image_paths = []
     labels = []
