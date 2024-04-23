@@ -1,4 +1,4 @@
-from matplotlib import pyplot as plt
+import matplotlib.pyplot as plt
 import pandas as pd
 import tkinter as tk
 from tkinter import *
@@ -19,7 +19,6 @@ from keras.models import Sequential, model_from_json
 from keras.layers import Dense, Conv2D, Dropout, Flatten, MaxPooling2D, Input
 
 from tqdm.notebook import tqdm
-from AutoClean import AutoClean #pip install py-AutoClean
 
 root = tk.Tk()
 root.title('App version 1.3.4')
@@ -27,10 +26,9 @@ root.title('App version 1.3.4')
 my_ref = {}  # to store references to checkboxes
 i = 1
 selected_checkboxes = []  # To store the checkbuttons which are checked
-data_types = ["int64", "float64", "object"]
-labels = []
 
 # Data functions
+
 def upload_file():
     global df, tree_list
     f_types = [('CSV files', "*.csv"), ('All', "*.*")]
@@ -45,16 +43,7 @@ def upload_file():
     search_entry.bind('<KeyRelease>', lambda event: my_search())
     target_combobox["values"] = tree_list
     my_columns()
-    
-     # Transform tab
-    for dtype in data_types:  # Loop through data types
-        # Lọc các cột theo định dạng dữ liệu dtype
-        columns = [col for col in df.columns if df[col].dtype == dtype]
-        # Tạo danh sách tên cột cùng với định dạng dữ liệu của chúng
-        columns_with_dtype = [f"{col} {{{dtype}}}" for col in columns]
-        # Thêm danh sách cột vào Listbox
-        for col in columns_with_dtype:
-            transform_list.insert(tk.END, col)
+
 
 def my_search():
     # Lấy giá trị từ Entry và chuyển về chữ thường
@@ -72,6 +61,7 @@ def my_search():
     else:
         # Nếu không có giá trị tìm kiếm được nhập vào, hiển thị toàn bộ dữ liệu
         trv_refresh()
+
 
 def trv_refresh(r_set=None):  # Refresh the Treeview to reflect changes
     global df, trv, tree_list
@@ -91,16 +81,15 @@ def trv_refresh(r_set=None):  # Refresh the Treeview to reflect changes
 
     for dt in r_set:
         v = [r for r in dt]
-        # Kiểm tra nếu item chưa tồn tại trong Treeview trước khi chèn
-        if not trv.exists(v[0]):
-            trv.insert("", 'end', iid=v[0], values=v)
+        trv.insert("", 'end', iid=v[0], values=v)
 
     vs = ttk.Scrollbar(tab1, orient="vertical", command=trv.yview)
     trv.configure(yscrollcommand=vs.set)  # connect to Treeview
     vs.grid(row=5, column=4, sticky='ns')  # Place on grid
 
-
 # Visualize functions
+
+
 def my_columns():
     global i, my_ref, selected_checkboxes
     i = 1  # to increase the column number
@@ -115,6 +104,7 @@ def my_columns():
         i += 1
         # Append checkbox and its variable to the list
         selected_checkboxes.append((column, var))
+
 
 def execute_model():
     global model_train  # Di chuyển câu lệnh global lên đầu hàm
@@ -189,12 +179,14 @@ def choose_train_dir():
     train = pd.DataFrame()
     train['image'], train['label'] = create_cnn_df(TRAIN_DIR)
 
+
 def choose_test_dir():
     global test, TEST_DIR
     TEST_DIR = filedialog.askdirectory()
     test_dir_label.config(text=TEST_DIR)
     test = pd.DataFrame()
     test['image'], test['label'] = create_cnn_df(TEST_DIR)
+
 
 def extract_features(images):
     features = []
@@ -205,6 +197,7 @@ def extract_features(images):
     features = np.array(features)
     features = features.reshape(len(features), 48, 48, 1)
     return features
+
 
 def train_model():
     train_features = extract_features(train['image'])
@@ -279,29 +272,32 @@ def choose_model():
         model.load_weights(model_h5_path)
         
 def choose_input():
-    global img
+    image = filedialog.askopenfilename()
+    input_label.config(text=image)
     img = load_img(image, color_mode="grayscale")
     feature = np.array(img)
     feature = feature.reshape(1, 48, 48, 1)
-    image = filedialog.askopenfilename()
-    input_label.config(text=image)
     img = feature/255.0
     pred = model.predict(img)
+    labels = [listbox.get(index) for index in range(listbox.size())]
     pred_label = labels[pred.argmax()]
     plt.title('Prediction: ' + pred_label)
     plt.imshow(img.reshape(48, 48), cmap='gray')
+    plt.axis('off')
+    plt.show()
 
 def add_label():
-    label_text = label_input.get()
-    labels.append(label_text)
-    labels_tree.insert('', 'end', value=(label_text,))
+    input_text = label_input.get()
+    words = input_text.split(' ')
+    for word in words:
+        if word not in listbox.get(0, tk.END):
+            listbox.insert(tk.END, word.lower())
+    label_input.delete(0, tk.END)
     
-def auto_clean_data():
-    global df
-    ac = AutoClean(df)
-    df = ac.auto_clean()
-    trv_refresh()
-
+def remove_item(event):
+    index = listbox.curselection()
+    if index:
+        listbox.delete(index)
 # GUI
 left_frame = tk.LabelFrame(root, text='Choose File')
 left_frame.grid(row=0, column=0, padx=10, pady=10)
@@ -313,13 +309,11 @@ tabControl = ttk.Notebook(right_frame)
 tab1 = ttk.Frame(tabControl)
 tab2 = ttk.Frame(tabControl)
 tab3 = ttk.Frame(tabControl)
-tab4 = ttk.Frame(tabControl)
 
 tabControl.add(tab1, text='Data')
 tabControl.add(tab2, text='Visualize')
 tabControl.add(tab3, text='CNN model for classification')
 tabControl.grid(row=0, column=0, columnspan=2)
-tabControl.add(tab4, text='Transform')
 
 # Data tab
 my_font1 = ('times', 12, 'bold')
@@ -391,8 +385,9 @@ model_h5_label.grid(row=5, column=0, padx=5, pady=5, sticky=tk.W)
 choose_model_btn = tk.Button(tab3, text="Browse", command=choose_model)
 choose_model_btn.grid(row=5, column=1, padx=5, pady=5, sticky=tk.W)
 
-labels_tree = ttk.Treeview(tab3, column="Labels", show="headings")
-labels_tree.grid(row=8, column=0, padx=5, pady=5, sticky=tk.W)
+listbox = tk.Listbox(tab3)
+listbox.grid(row=8, column=0, padx=5, pady=5, sticky=tk.W)
+listbox.bind("<Double-1>", remove_item)
 
 add_labels_label = tk.Label(tab3, text="Add labels")
 add_labels_label.grid(row=7, column=0, padx=5, pady=5, sticky=tk.W)
@@ -408,15 +403,5 @@ choose_input_label.grid(row=9, column=0, padx=5, pady=5, sticky=tk.W)
 
 choose_input_btn = tk.Button(tab3, text="Browse", command=choose_input)
 choose_input_btn.grid(row=9, column=1, padx=5, pady=5, sticky=tk.W)
-
-# Transform tab
-transform_label = tk.Label(tab4, text="Select variables(s): ")
-transform_label.grid(row=0, column=0, padx=5, pady=5, sticky=tk.W)
-
-transform_list = tk.Listbox(tab4, height=5, selectmode=tk.SINGLE)
-transform_list.grid(row=1, column=0, padx=5, pady=5, sticky=tk.W + tk.E + tk.N + tk.S)
-
-auto_clean_btn = tk.Button(tab4, text="Auto Clean", command=auto_clean_data)
-auto_clean_btn.grid(row=2, column=0, padx=5, pady=5, sticky=tk.W)
 
 root.mainloop()  # Keep the window open
