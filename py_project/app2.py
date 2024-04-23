@@ -26,11 +26,10 @@ root.title('App version 1.3.4')
 my_ref = {}  # to store references to checkboxes
 i = 1
 selected_checkboxes = []  # To store the checkbuttons which are checked
+data_types = ["int64", "float64", "object"]
 labels = []
 
 # Data functions
-
-
 def upload_file():
     global df, tree_list
     f_types = [('CSV files', "*.csv"), ('All', "*.*")]
@@ -45,7 +44,16 @@ def upload_file():
     search_entry.bind('<KeyRelease>', lambda event: my_search())
     target_combobox["values"] = tree_list
     my_columns()
-
+    
+     # Transform tab
+    for dtype in data_types:  # Loop through data types
+        # Lọc các cột theo định dạng dữ liệu dtype
+        columns = [col for col in df.columns if df[col].dtype == dtype]
+        # Tạo danh sách tên cột cùng với định dạng dữ liệu của chúng
+        columns_with_dtype = [f"{col} {{{dtype}}}" for col in columns]
+        # Thêm danh sách cột vào Listbox
+        for col in columns_with_dtype:
+            transform_list.insert(tk.END, col)
 
 def my_search():
     # Lấy giá trị từ Entry và chuyển về chữ thường
@@ -63,7 +71,6 @@ def my_search():
     else:
         # Nếu không có giá trị tìm kiếm được nhập vào, hiển thị toàn bộ dữ liệu
         trv_refresh()
-
 
 def trv_refresh(r_set=None):  # Refresh the Treeview to reflect changes
     global df, trv, tree_list
@@ -90,8 +97,6 @@ def trv_refresh(r_set=None):  # Refresh the Treeview to reflect changes
     vs.grid(row=5, column=4, sticky='ns')  # Place on grid
 
 # Visualize functions
-
-
 def my_columns():
     global i, my_ref, selected_checkboxes
     i = 1  # to increase the column number
@@ -106,7 +111,6 @@ def my_columns():
         i += 1
         # Append checkbox and its variable to the list
         selected_checkboxes.append((column, var))
-
 
 def execute_model():
     global model_train  # Di chuyển câu lệnh global lên đầu hàm
@@ -181,14 +185,12 @@ def choose_train_dir():
     train = pd.DataFrame()
     train['image'], train['label'] = create_cnn_df(TRAIN_DIR)
 
-
 def choose_test_dir():
     global test, TEST_DIR
     TEST_DIR = filedialog.askdirectory()
     test_dir_label.config(text=TEST_DIR)
     test = pd.DataFrame()
     test['image'], test['label'] = create_cnn_df(TEST_DIR)
-
 
 def extract_features(images):
     features = []
@@ -199,7 +201,6 @@ def extract_features(images):
     features = np.array(features)
     features = features.reshape(len(features), 48, 48, 1)
     return features
-
 
 def train_model():
     train_features = extract_features(train['image'])
@@ -302,11 +303,13 @@ tabControl = ttk.Notebook(right_frame)
 tab1 = ttk.Frame(tabControl)
 tab2 = ttk.Frame(tabControl)
 tab3 = ttk.Frame(tabControl)
+tab4 = ttk.Frame(tabControl)
 
 tabControl.add(tab1, text='Data')
 tabControl.add(tab2, text='Visualize')
 tabControl.add(tab3, text='CNN model for classification')
 tabControl.grid(row=0, column=0, columnspan=2)
+tabControl.add(tab4, text='Transform')
 
 # Data tab
 my_font1 = ('times', 12, 'bold')
@@ -395,5 +398,12 @@ choose_input_label.grid(row=9, column=0, padx=5, pady=5, sticky=tk.W)
 
 choose_input_btn = tk.Button(tab3, text="Browse", command=choose_input)
 choose_input_btn.grid(row=9, column=1, padx=5, pady=5, sticky=tk.W)
+
+# Transform tab
+transform_label = tk.Label(tab4, text="Select variables(s): ")
+transform_label.grid(row=0, column=0, padx=5, pady=5, sticky=tk.W)
+
+transform_list = tk.Listbox(tab4, height=5, selectmode=tk.SINGLE)
+transform_list.grid(row=1, column=0, padx=5, pady=5, sticky=tk.W + tk.E + tk.N + tk.S)
 
 root.mainloop()  # Keep the window open
