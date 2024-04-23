@@ -19,6 +19,7 @@ from keras.models import Sequential, model_from_json
 from keras.layers import Dense, Conv2D, Dropout, Flatten, MaxPooling2D, Input
 
 from tqdm.notebook import tqdm
+from AutoClean import AutoClean #pip install py-AutoClean
 
 root = tk.Tk()
 root.title('App version 1.3.4')
@@ -90,11 +91,14 @@ def trv_refresh(r_set=None):  # Refresh the Treeview to reflect changes
 
     for dt in r_set:
         v = [r for r in dt]
-        trv.insert("", 'end', iid=v[0], values=v)
+        # Kiểm tra nếu item chưa tồn tại trong Treeview trước khi chèn
+        if not trv.exists(v[0]):
+            trv.insert("", 'end', iid=v[0], values=v)
 
     vs = ttk.Scrollbar(tab1, orient="vertical", command=trv.yview)
     trv.configure(yscrollcommand=vs.set)  # connect to Treeview
     vs.grid(row=5, column=4, sticky='ns')  # Place on grid
+
 
 # Visualize functions
 def my_columns():
@@ -291,6 +295,12 @@ def add_label():
     label_text = label_input.get()
     labels.append(label_text)
     labels_tree.insert('', 'end', value=(label_text,))
+    
+def auto_clean_data():
+    global df
+    ac = AutoClean(df)
+    df = ac.auto_clean()
+    trv_refresh()
 
 # GUI
 left_frame = tk.LabelFrame(root, text='Choose File')
@@ -405,5 +415,8 @@ transform_label.grid(row=0, column=0, padx=5, pady=5, sticky=tk.W)
 
 transform_list = tk.Listbox(tab4, height=5, selectmode=tk.SINGLE)
 transform_list.grid(row=1, column=0, padx=5, pady=5, sticky=tk.W + tk.E + tk.N + tk.S)
+
+auto_clean_btn = tk.Button(tab4, text="Auto Clean", command=auto_clean_data)
+auto_clean_btn.grid(row=2, column=0, padx=5, pady=5, sticky=tk.W)
 
 root.mainloop()  # Keep the window open
