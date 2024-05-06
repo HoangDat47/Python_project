@@ -30,8 +30,8 @@ i = 1
 selected_checkboxes = []  # To store the checkbuttons which are checked
 data_types = ["int64", "float64", "object"]
 labels = []
-# Data functions
 
+# Data functions
 def upload_file():
     global df, tree_list
     f_types = [('CSV files', "*.csv"), ('All', "*.*")]
@@ -74,7 +74,6 @@ def my_search():
         # Nếu không có giá trị tìm kiếm được nhập vào, hiển thị toàn bộ dữ liệu
         trv_refresh()
 
-
 def trv_refresh(r_set=None):  # Refresh the Treeview to reflect changes
     global df, trv, tree_list
     if r_set is None:
@@ -83,7 +82,7 @@ def trv_refresh(r_set=None):  # Refresh the Treeview to reflect changes
     if hasattr(root, 'trv'):
         root.trv.destroy()
 
-    trv = ttk.Treeview(tab1, selectmode='browse', height=10,
+    trv = ttk.Treeview(dataTab, selectmode='browse', height=10,
                        show='headings', columns=tree_list)
     trv.grid(row=5, column=1, columnspan=3, padx=10, pady=20)
 
@@ -97,14 +96,11 @@ def trv_refresh(r_set=None):  # Refresh the Treeview to reflect changes
         if not trv.exists(v[0]):
             trv.insert("", 'end', iid=v[0], values=v)
 
-    vs = ttk.Scrollbar(tab1, orient="vertical", command=trv.yview)
+    vs = ttk.Scrollbar(dataTab, orient="vertical", command=trv.yview)
     trv.configure(yscrollcommand=vs.set)  # connect to Treeview
     vs.grid(row=5, column=4, sticky='ns')  # Place on grid
 
-
-# Visualize functions
-
-
+# Model functions
 def my_columns():
     global i, my_ref, selected_checkboxes
     i = 1  # to increase the column number
@@ -113,13 +109,12 @@ def my_columns():
     input_label_cb.config(text=" ")  # Remove the previous checkboxes
     for column in tree_list:
         var = IntVar()
-        cb = Checkbutton(tab2, text=column, variable=var)
+        cb = Checkbutton(modelTab, text=column, variable=var)
         cb.grid(row=i + 3, column=0, padx=5, sticky=tk.W)
         my_ref[column] = var
         i += 1
         # Append checkbox and its variable to the list
         selected_checkboxes.append((column, var))
-
 
 def execute_model():
     global model_train  # Di chuyển câu lệnh global lên đầu hàm
@@ -186,144 +181,309 @@ def execute_model():
         plt.title("Scatter plot")
         plt.text(0.5, 0.95, f"R-squared: {r2}", ha='center', va='top', transform=plt.gca().transAxes, fontsize=10)
         plt.show()
+
+# Visualize functions
+def selected_vs_type(event):
+    quantitative_columns = [column for column in tree_list if df[column].dtype in ['int64', 'float64']]
+    categorical_columns = [column for column in tree_list if df[column].dtype == 'object']
+    graph_type_1 = ["Histogram", "Box Plot"]
+    graph_type_2 = ["Bar Chart", "Pie Chart"]
+    graph_type_3 = ["Stacked Bar Chart", "Heatmap"]
+    graph_type_4 = ["Bar Chart", "Violin Plot"]
+    graph_type_5 = ["Line Plot", "Scatter Plot"]
+      
+    selected = vs_type_combobox.get()
+    if selected == "1 Quantitative":
+        column1_label.config(text="Quantitative")
+        column1_combobox["values"] = quantitative_columns
         
-def create_cnn_df(dir):
-    image_paths = []
-    labels = []
-    for label in os.listdir(dir):
-        for imagename in os.listdir(os.path.join(dir, label)):
-            image_paths.append(os.path.join(dir, label, imagename))
-            labels.append(label)
-        print(label, "completed")
-    return image_paths, labels
-
-
-def choose_train_dir():
-    global train, TRAIN_DIR
-    TRAIN_DIR = filedialog.askdirectory()
-    train_dir_label.config(text=TRAIN_DIR)
-    train = pd.DataFrame()
-    train['image'], train['label'] = create_cnn_df(TRAIN_DIR)
-
-
-def choose_test_dir():
-    global test, TEST_DIR
-    TEST_DIR = filedialog.askdirectory()
-    test_dir_label.config(text=TEST_DIR)
-    test = pd.DataFrame()
-    test['image'], test['label'] = create_cnn_df(TEST_DIR)
-
-
-def extract_features(images):
-    features = []
-    for image in tqdm(images):
-        img = load_img(image, color_mode='grayscale', target_size=(48, 48))
-        img = np.array(img)
-        features.append(img)
-    features = np.array(features)
-    features = features.reshape(len(features), 48, 48, 1)
-    return features
-
-
-def train_model():
-    train_features = extract_features(train['image'])
-    test_features = extract_features(test['image'])
-
-    x_train = train_features/255.0
-    x_test = test_features/255.0
-
-    le = LabelEncoder()
-    le.fit(train['label'])
-
-    y_train = le.transform(train['label'])
-    y_test = le.transform(test['label'])
-
-    y_train = to_categorical(y_train, num_classes=7)
-    y_test = to_categorical(y_test, num_classes=7)
-
-    model = Sequential()
-    model.add(Input(shape=(48, 48, 1)))
-
-    model.add(Conv2D(128, kernel_size=(3, 3), activation='relu'))
-    model.add(MaxPooling2D(pool_size=(2, 2)))
-    model.add(Dropout(0.4))
-
-    model.add(Conv2D(256, kernel_size=(3, 3), activation='relu'))
-    model.add(MaxPooling2D(pool_size=(2, 2)))
-    model.add(Dropout(0.4))
-
-    model.add(Conv2D(512, kernel_size=(3, 3), activation='relu'))
-    model.add(MaxPooling2D(pool_size=(2, 2)))
-    model.add(Dropout(0.4))
-
-    model.add(Conv2D(512, kernel_size=(3, 3), activation='relu'))
-    model.add(MaxPooling2D(pool_size=(2, 2)))
-    model.add(Dropout(0.4))
-
-    model.add(Flatten())
-
-    model.add(Dense(128, activation='relu'))
-    model.add(Dropout(0.2))
-    model.add(Dense(128, activation='relu'))
-    model.add(Dropout(0.2))
-
-    model.add(Dense(7, activation='softmax'))
-
-    model.compile(optimizer='adam',
-                  loss='categorical_crossentropy', metrics=['accuracy'])
-    model.fit(x_train, y_train, epochs=5, batch_size=64,
-              validation_data=(x_test, y_test))
-
-    model_json = model.to_json()
-    with open("trained_model.json", 'w') as json_file:
-        json_file.write(model_json)
-    model.save("trained_model.h5")
-
-
-def choose_json():
-    global json_file_path, model_json
-    json_file_path = filedialog.askopenfilename(filetypes=(("JSON files", "*.json"), ("All files", "*.*")))
-    if json_file_path:
-        json_file = open(json_file_path, 'r')
-        model_json_label.config(text=json_file_path)
-        model_json = json_file.read()
-        json_file.close()
-
-def choose_model():
-    global model, loaded_model
-    model = model_from_json(model_json)
-    model_h5_path = filedialog.askopenfilename(filetypes=(("H5 files", "*.h5"), ("All files", "*.*")))
-    if model_h5_path:
-        model_h5_label.config(text=model_h5_path)
-        model.load_weights(model_h5_path)
+        column2_combobox["values"] = []
+        column2_label.grid_remove()
+        column2_combobox.grid_remove()
         
-def choose_input():
-    image = filedialog.askopenfilename()
-    input_label.config(text=image)
-    img = load_img(image, color_mode="grayscale")
-    feature = np.array(img)
-    feature = feature.reshape(1, 48, 48, 1)
-    img = feature/255.0
-    pred = model.predict(img)
-    labels = [listbox.get(index) for index in range(listbox.size())]
-    pred_label = labels[pred.argmax()]
-    plt.title('Prediction: ' + pred_label)
-    plt.imshow(img.reshape(48, 48), cmap='gray')
-    plt.axis('off')
+        vs_graph_type_combobox["values"] = graph_type_1
+    elif selected == "1 Categorical":
+        column1_label.config(text="Categorical")
+        column1_combobox["values"] = categorical_columns
+        
+        column2_combobox["values"] = []
+        column2_label.config(text="")
+        column2_combobox.grid_remove()
+        column2_combobox.grid_remove()
+        
+        vs_graph_type_combobox["values"] = graph_type_2
+    elif selected == "2 Categorical":
+        column1_label.config(text="Categorical 1")
+        column2_label.config(text="Categorical 2")
+        
+        column1_combobox["values"] = categorical_columns
+        column2_combobox["values"] = categorical_columns
+        
+        column2_label.grid(row=2, column=0, padx=5, pady=5, sticky=tk.W)
+        column2_combobox.grid(row=2, column=1, padx=5, pady=5, sticky=tk.W)
+        
+        vs_graph_type_combobox["values"] = graph_type_3
+    elif selected == "1 Categorical - 1 Quantitative":
+        column1_label.config(text="Categorical")
+        column2_label.config(text="Quantitative")
+        
+        column1_combobox["values"] = categorical_columns
+        column2_combobox["values"] = quantitative_columns
+        
+        column2_label.grid(row=2, column=0, padx=5, pady=5, sticky=tk.W)
+        column2_combobox.grid(row=2, column=1, padx=5, pady=5, sticky=tk.W)
+        
+        vs_graph_type_combobox["values"] = graph_type_4
+    elif selected == "2 Quantitative":
+        column1_label.config(text="Quantitative 1")
+        column2_label.config(text="Quantitative 2")
+        
+        column1_combobox["values"] = quantitative_columns
+        column2_combobox["values"] = quantitative_columns
+        
+        column2_label.grid(row=2, column=0, padx=5, pady=5, sticky=tk.W)
+        column2_combobox.grid(row=2, column=1, padx=5, pady=5, sticky=tk.W)
+        
+        vs_graph_type_combobox["values"] = graph_type_5
+        
+def bar_chart_1_column(column):
+    plt.figure(figsize=(10, 6))
+    sns.countplot(data=df, x=column)
+    plt.title(f"Bar chart for {column}")
+    plt.show()
+    
+def histogram_1_column(column):
+    plt.figure(figsize=(10, 6))
+    sns.histplot(data=df, x=column, kde=True)
+    plt.title(f"Histogram for {column}")
+    plt.show()
+    
+def pie_chart_1_column(column):
+    plt.figure(figsize=(10, 6))
+    df[column].value_counts().plot.pie(autopct='%1.1f%%')
+    plt.title(f"Pie chart for {column}")
+    plt.show()
+    
+def box_plot_1_column(column):
+    plt.figure(figsize=(10, 6))
+    sns.boxplot(data=df, y=column)
+    plt.title(f"Box plot for {column}")
+    plt.show()
+    
+def stacked_bar_chart_2_columns(column1, column2):
+    plt.figure(figsize=(10, 6))
+    df.groupby(column1)[column2].value_counts().unstack().plot(kind='bar', stacked=True)
+    plt.title(f"Stacked bar chart for {column1} and {column2}")
+    plt.show()
+    
+def heatmap_2_columns(column1, column2):
+    plt.figure(figsize=(10, 6))
+    sns.heatmap(pd.crosstab(df[column1], df[column2]), annot=True, fmt='d')
+    plt.title(f"Heatmap for {column1} and {column2}")
     plt.show()
 
-def add_label():
-    input_text = label_input.get()
-    words = input_text.split(' ')
-    for word in words:
-        if word not in listbox.get(0, tk.END):
-            listbox.insert(tk.END, word.lower())
-    label_input.delete(0, tk.END)
+def box_plot_2_columns(column1, column2):
+    plt.figure(figsize=(10, 6))
+    sns.boxplot(data=df, x=column1, y=column2)
+    plt.title(f"Box plot for {column1} and {column2}")
+    plt.show()
     
-def remove_item(event):
-    index = listbox.curselection()
-    if index:
-        listbox.delete(index)
+def violin_plot_2_columns(column1, column2):
+    plt.figure(figsize=(10, 6))
+    sns.violinplot(data=df, x=column1, y=column2)
+    plt.title(f"Violin plot for {column1} and {column2}")
+    plt.show()
+    
+def line_plot_2_columns(column1, column2):
+    plt.figure(figsize=(10, 6))
+    sns.lineplot(data=df, x=column1, y=column2)
+    plt.title(f"Line plot for {column1} and {column2}")
+    plt.show()    
+    
+def bar_chart_2_columns(column1, column2):
+    plt.figure(figsize=(10, 6))
+    sns.countplot(data=df, x=column1, hue=column2)
+    plt.title(f"Bar chart for {column1} and {column2}")
+    plt.show()
+    
+def scatter_plot_2_columns(column1, column2):
+    plt.figure(figsize=(10, 6))
+    sns.scatterplot(data=df, x=column1, y=column2)
+    plt.title(f"Scatter plot for {column1} and {column2}")
+    plt.show()
+    
+def box_plot_2_columns(column1, column2):
+    plt.figure(figsize=(10, 6))
+    sns.boxplot(data=df, x=column1, y=column2)
+    plt.title(f"Box plot for {column1} and {column2}")
+    plt.show()
+    
+def execute_visualize():
+    vs_type = vs_type_combobox.get()
+    column1 = column1_combobox.get()
+    column2 = column2_combobox.get()
+    graph_type = vs_graph_type_combobox.get()
+    
+    if vs_type == "1 Quantitative":
+        if graph_type == "Histogram":
+            histogram_1_column(column1)
+        elif graph_type == "Box Plot":
+            box_plot_1_column(column1)
+    elif vs_type == "1 Categorical":
+        if graph_type == "Bar Chart":
+            bar_chart_1_column(column1)
+        elif graph_type == "Pie Chart":
+            pie_chart_1_column(column1)
+    elif vs_type == "2 Categorical":
+        if graph_type == "Stacked Bar Chart":
+            stacked_bar_chart_2_columns(column1, column2)
+        elif graph_type == "Heatmap":
+            heatmap_2_columns(column1, column2)
+    elif vs_type == "1 Categorical - 1 Quantitative":
+        if graph_type == "Bar Chart":
+            bar_chart_2_columns(column1, column2)
+        elif graph_type == "Violin Plot":
+            violin_plot_2_columns(column1, column2)
+    else:
+        if graph_type == "Line Plot":
+            line_plot_2_columns(column1, column2)
+        elif graph_type == "Scatter Plot":
+            scatter_plot_2_columns(column1, column2)
+    
+# CNN functions        
+# def create_cnn_df(dir):
+#     image_paths = []
+#     labels = []
+#     for label in os.listdir(dir):
+#         for imagename in os.listdir(os.path.join(dir, label)):
+#             image_paths.append(os.path.join(dir, label, imagename))
+#             labels.append(label)
+#         print(label, "completed")
+#     return image_paths, labels
+
+# def choose_train_dir():
+#     global train, TRAIN_DIR
+#     TRAIN_DIR = filedialog.askdirectory()
+#     train_dir_label.config(text=TRAIN_DIR)
+#     train = pd.DataFrame()
+#     train['image'], train['label'] = create_cnn_df(TRAIN_DIR)
+
+# def choose_test_dir():
+#     global test, TEST_DIR
+#     TEST_DIR = filedialog.askdirectory()
+#     test_dir_label.config(text=TEST_DIR)
+#     test = pd.DataFrame()
+#     test['image'], test['label'] = create_cnn_df(TEST_DIR)
+
+# def extract_features(images):
+#     features = []
+#     for image in tqdm(images):
+#         img = load_img(image, color_mode='grayscale', target_size=(48, 48))
+#         img = np.array(img)
+#         features.append(img)
+#     features = np.array(features)
+#     features = features.reshape(len(features), 48, 48, 1)
+#     return features
+
+# def train_model():
+#     train_features = extract_features(train['image'])
+#     test_features = extract_features(test['image'])
+
+#     x_train = train_features/255.0
+#     x_test = test_features/255.0
+
+#     le = LabelEncoder()
+#     le.fit(train['label'])
+
+#     y_train = le.transform(train['label'])
+#     y_test = le.transform(test['label'])
+
+#     y_train = to_categorical(y_train, num_classes=7)
+#     y_test = to_categorical(y_test, num_classes=7)
+
+#     model = Sequential()
+#     model.add(Input(shape=(48, 48, 1)))
+
+#     model.add(Conv2D(128, kernel_size=(3, 3), activation='relu'))
+#     model.add(MaxPooling2D(pool_size=(2, 2)))
+#     model.add(Dropout(0.4))
+
+#     model.add(Conv2D(256, kernel_size=(3, 3), activation='relu'))
+#     model.add(MaxPooling2D(pool_size=(2, 2)))
+#     model.add(Dropout(0.4))
+
+#     model.add(Conv2D(512, kernel_size=(3, 3), activation='relu'))
+#     model.add(MaxPooling2D(pool_size=(2, 2)))
+#     model.add(Dropout(0.4))
+
+#     model.add(Conv2D(512, kernel_size=(3, 3), activation='relu'))
+#     model.add(MaxPooling2D(pool_size=(2, 2)))
+#     model.add(Dropout(0.4))
+
+#     model.add(Flatten())
+
+#     model.add(Dense(128, activation='relu'))
+#     model.add(Dropout(0.2))
+#     model.add(Dense(128, activation='relu'))
+#     model.add(Dropout(0.2))
+
+#     model.add(Dense(7, activation='softmax'))
+
+#     model.compile(optimizer='adam',
+#                   loss='categorical_crossentropy', metrics=['accuracy'])
+#     model.fit(x_train, y_train, epochs=5, batch_size=64,
+#               validation_data=(x_test, y_test))
+
+#     model_json = model.to_json()
+#     with open("trained_model.json", 'w') as json_file:
+#         json_file.write(model_json)
+#     model.save("trained_model.h5")
+
+# def choose_json():
+#     global json_file_path, model_json
+#     json_file_path = filedialog.askopenfilename(filetypes=(("JSON files", "*.json"), ("All files", "*.*")))
+#     if json_file_path:
+#         json_file = open(json_file_path, 'r')
+#         model_json_label.config(text=json_file_path)
+#         model_json = json_file.read()
+#         json_file.close()
+
+# def choose_model():
+#     global model, loaded_model
+#     model = model_from_json(model_json)
+#     model_h5_path = filedialog.askopenfilename(filetypes=(("H5 files", "*.h5"), ("All files", "*.*")))
+#     if model_h5_path:
+#         model_h5_label.config(text=model_h5_path)
+#         model.load_weights(model_h5_path)
+        
+# def choose_input():
+#     image = filedialog.askopenfilename()
+#     input_label.config(text=image)
+#     img = load_img(image, color_mode="grayscale")
+#     feature = np.array(img)
+#     feature = feature.reshape(1, 48, 48, 1)
+#     img = feature/255.0
+#     pred = model.predict(img)
+#     labels = [listbox.get(index) for index in range(listbox.size())]
+#     pred_label = labels[pred.argmax()]
+#     plt.title('Prediction: ' + pred_label)
+#     plt.imshow(img.reshape(48, 48), cmap='gray')
+#     plt.axis('off')
+#     plt.show()
+
+# def add_label():
+#     input_text = label_input.get()
+#     words = input_text.split(' ')
+#     for word in words:
+#         if word not in listbox.get(0, tk.END):
+#             listbox.insert(tk.END, word.lower())
+#     label_input.delete(0, tk.END)
+    
+# def remove_item(event):
+#     index = listbox.curselection()
+#     if index:
+#         listbox.delete(index)
+
 # GUI
 left_frame = tk.LabelFrame(root, text='Choose File')
 left_frame.grid(row=0, column=0, padx=10, pady=10)
@@ -332,15 +492,17 @@ right_frame = tk.LabelFrame(root)
 right_frame.grid(row=0, column=1, padx=10, pady=10)
 
 tabControl = ttk.Notebook(right_frame)
-tab1 = ttk.Frame(tabControl)
-tab2 = ttk.Frame(tabControl)
-tab3 = ttk.Frame(tabControl)
-tab4 = ttk.Frame(tabControl)
+dataTab = ttk.Frame(tabControl)
+modelTab = ttk.Frame(tabControl)
+visualizeTab = ttk.Frame(tabControl)
+cnnTab = ttk.Frame(tabControl)
+transformTab = ttk.Frame(tabControl)
 
-tabControl.add(tab1, text='Data')
-tabControl.add(tab2, text='Visualize')
-tabControl.add(tab3, text='CNN model for classification')
-tabControl.add(tab4, text='Transform')
+tabControl.add(dataTab, text='Data')
+tabControl.add(modelTab, text='Model')
+tabControl.add(visualizeTab, text='Visualize')
+tabControl.add(cnnTab, text='CNN model for classification')
+tabControl.add(transformTab, text='Transform')
 tabControl.grid(row=0, column=0, columnspan=2)
 
 # Data tab
@@ -351,91 +513,120 @@ path_label.grid(row=1, column=1)
 browse_btn = tk.Button(left_frame, text='Browse File',
                        width=20, command=lambda: upload_file())
 browse_btn.grid(row=2, column=1, pady=5)
-count_label = tk.Label(tab1, width=40, text='',
+count_label = tk.Label(dataTab, width=40, text='',
                        bg='lightyellow')
 count_label.grid(row=3, column=1, padx=5)
-search_entry = tk.Entry(tab1, width=35, font=18)  # added one Entry box
+search_entry = tk.Entry(dataTab, width=35, font=18)  # added one Entry box
 search_entry.grid(row=4, column=1, padx=1)
 
-# Visualize tab
-target_label = tk.Label(tab2, text="Select Target Variable")
+# Model tab
+target_label = tk.Label(modelTab, text="Select Target Variable")
 target_label.grid(row=0, column=0, padx=5, sticky=tk.W)
 
-target_combobox = ttk.Combobox(tab2)
+target_combobox = ttk.Combobox(modelTab)
 target_combobox.grid(row=1, column=0, padx=5, pady=5, sticky=tk.W)
 
-input_label = tk.Label(tab2, text="Select Input Variables")
+input_label = tk.Label(modelTab, text="Select Input Variables")
 input_label.grid(row=2, column=0, padx=5, sticky=tk.W)
 
-input_label_cb = tk.Label(tab2)
+input_label_cb = tk.Label(modelTab)
 input_label_cb.grid(row=3, column=0, padx=5, sticky=tk.W)
 
-model_label = tk.Label(tab2, text="Choose Model")
+model_label = tk.Label(modelTab, text="Choose Model")
 model_label.grid(row=0, column=3, padx=50, pady=10, sticky=tk.W)
 
 model_combobox = ttk.Combobox(
-    tab2, values=["Logistic Regression", "KNN", "Linear Regression"]
+    modelTab, values=["Logistic Regression", "KNN", "Linear Regression"]
 )
 model_combobox.grid(row=1, column=3, padx=50, sticky=tk.W)
 
-execution_button = tk.Button(tab2, text="Execution", command=execute_model)
+execution_button = tk.Button(modelTab, text="Execution", command=execute_model)
 execution_button.grid(row=2, column=3, padx=50, pady=10, sticky=tk.W)
 
+# Visualize tab
+visualize_title = tk.Label(visualizeTab, text="Visualize Type")
+visualize_title.grid(row=0, column=0, padx=5, pady=5, sticky=tk.W)
+
+vs_type_combobox = ttk.Combobox(visualizeTab, values= ["1 Quantitative", "1 Categorical", "2 Categorical", 
+                                                       "1 Categorical - 1 Quantitative", "2 Quantitative"], width=40)
+vs_type_combobox.grid(row=0, column=1, padx=5, pady=5, sticky=tk.W)
+vs_type_combobox.bind("<<ComboboxSelected>>", selected_vs_type)
+
+column1_label = tk.Label(visualizeTab, text="Column 1")
+column1_label.grid(row=1, column=0, padx=5, pady=5, sticky=tk.W)
+
+column2_label = tk.Label(visualizeTab, text="Column 2")
+column2_label.grid(row=2, column=0, padx=5, pady=5, sticky=tk.W)
+
+column1_combobox = ttk.Combobox(visualizeTab)
+column1_combobox.grid(row=1, column=1, padx=5, pady=5, sticky=tk.W)
+
+column2_combobox = ttk.Combobox(visualizeTab)
+column2_combobox.grid(row=2, column=1, padx=5, pady=5, sticky=tk.W)
+
+vs_graph_type_label = tk.Label(visualizeTab, text="Graph Type")
+vs_graph_type_label.grid(row=3, column=0, padx=5, pady=5, sticky=tk.W)
+
+vs_graph_type_combobox = ttk.Combobox(visualizeTab)
+vs_graph_type_combobox.grid(row=3, column=1, padx=5, pady=5, sticky=tk.W)
+
+excute_btn = tk.Button(visualizeTab, text="Execute", command=execute_visualize)
+excute_btn.grid(row=4, column=1, padx=5, pady=5, sticky=tk.W)
+
 # CNN tab
+# train_dir_label = tk.Label(cnnTab, text="Train Directory")
+# train_dir_label.grid(row=0, column=0, padx=5, pady=5, sticky=tk.W)
 
-train_dir_label = tk.Label(tab3, text="Train Directory")
-train_dir_label.grid(row=0, column=0, padx=5, pady=5, sticky=tk.W)
+# train_dir_btn = tk.Button(cnnTab, text="Browse", command=choose_train_dir)
+# train_dir_btn.grid(row=0, column=1, padx=5, pady=5, sticky=tk.W)
 
-train_dir_btn = tk.Button(tab3, text="Browse", command=choose_train_dir)
-train_dir_btn.grid(row=0, column=1, padx=5, pady=5, sticky=tk.W)
+# test_dir_label = tk.Label(cnnTab, text="Test Directory")
+# test_dir_label.grid(row=1, column=0, padx=5, pady=5, sticky=tk.W)
 
-test_dir_label = tk.Label(tab3, text="Test Directory")
-test_dir_label.grid(row=1, column=0, padx=5, pady=5, sticky=tk.W)
+# test_dir_btn = tk.Button(cnnTab, text="Browse", command=choose_test_dir)
+# test_dir_btn.grid(row=1, column=1, padx=5, pady=5, sticky=tk.W)
 
-test_dir_btn = tk.Button(tab3, text="Browse", command=choose_test_dir)
-test_dir_btn.grid(row=1, column=1, padx=5, pady=5, sticky=tk.W)
+# train_model_btn = tk.Button(cnnTab, text="Train", width=20, command=train_model)
+# train_model_btn.grid(row=2, column=0, padx=5, pady=5, sticky=tk.W)
 
-train_model_btn = tk.Button(tab3, text="Train", width=20, command=train_model)
-train_model_btn.grid(row=2, column=0, padx=5, pady=5, sticky=tk.W)
+# or_label = tk.Label(cnnTab, text="Choose model from file")
+# or_label = or_label.grid(row=3, column=0, padx=5, pady=5, sticky=tk.W)
 
-or_label = tk.Label(tab3, text="Choose model from file")
-or_label = or_label.grid(row=3, column=0, padx=5, pady=5, sticky=tk.W)
+# model_json_label = tk.Label(cnnTab, text="Model json file")
+# model_json_label.grid(row=4, column=0, padx=5, pady=5, sticky=tk.W)
 
-model_json_label = tk.Label(tab3, text="Model json file")
-model_json_label.grid(row=4, column=0, padx=5, pady=5, sticky=tk.W)
+# choose_json_btn = tk.Button(cnnTab, text="Browse", command=choose_json)
+# choose_json_btn.grid(row=4, column=1, padx=5, pady=5, sticky=tk.W)
 
-choose_json_btn = tk.Button(tab3, text="Browse", command=choose_json)
-choose_json_btn.grid(row=4, column=1, padx=5, pady=5, sticky=tk.W)
+# model_h5_label = tk.Label(cnnTab, text="Model h5 file")
+# model_h5_label.grid(row=5, column=0, padx=5, pady=5, sticky=tk.W)
 
-model_h5_label = tk.Label(tab3, text="Model h5 file")
-model_h5_label.grid(row=5, column=0, padx=5, pady=5, sticky=tk.W)
+# choose_model_btn = tk.Button(cnnTab, text="Browse", command=choose_model)
+# choose_model_btn.grid(row=5, column=1, padx=5, pady=5, sticky=tk.W)
 
-choose_model_btn = tk.Button(tab3, text="Browse", command=choose_model)
-choose_model_btn.grid(row=5, column=1, padx=5, pady=5, sticky=tk.W)
+# listbox = tk.Listbox(cnnTab)
+# listbox.grid(row=8, column=0, padx=5, pady=5, sticky=tk.W)
+# listbox.bind("<Double-1>", remove_item)
 
-listbox = tk.Listbox(tab3)
-listbox.grid(row=8, column=0, padx=5, pady=5, sticky=tk.W)
-listbox.bind("<Double-1>", remove_item)
+# add_labels_label = tk.Label(cnnTab, text="Add labels")
+# add_labels_label.grid(row=7, column=0, padx=5, pady=5, sticky=tk.W)
 
-add_labels_label = tk.Label(tab3, text="Add labels")
-add_labels_label.grid(row=7, column=0, padx=5, pady=5, sticky=tk.W)
+# label_input = tk.Entry(cnnTab, width=20)
+# label_input.grid(row=7, column=1, padx=5, pady=5, sticky=tk.W)
 
-label_input = tk.Entry(tab3, width=20)
-label_input.grid(row=7, column=1, padx=5, pady=5, sticky=tk.W)
+# add_label_btn = tk.Button(cnnTab, text="Add", command=add_label)
+# add_label_btn.grid(row=7, column=2, padx=5, pady=5, sticky=tk.W)
 
-add_label_btn = tk.Button(tab3, text="Add", command=add_label)
-add_label_btn.grid(row=7, column=2, padx=5, pady=5, sticky=tk.W)
+# choose_input_label = tk.Label(cnnTab, text="Choose input picture")
+# choose_input_label.grid(row=9, column=0, padx=5, pady=5, sticky=tk.W)
 
-choose_input_label = tk.Label(tab3, text="Choose input picture")
-choose_input_label.grid(row=9, column=0, padx=5, pady=5, sticky=tk.W)
-
-choose_input_btn = tk.Button(tab3, text="Browse", command=choose_input)
-choose_input_btn.grid(row=9, column=1, padx=5, pady=5, sticky=tk.W)
+# choose_input_btn = tk.Button(cnnTab, text="Browse", command=choose_input)
+# choose_input_btn.grid(row=9, column=1, padx=5, pady=5, sticky=tk.W)
 
 # Transform tab
-transform_label = tk.Label(tab4, text="Select variables(s): ")
+transform_label = tk.Label(transformTab, text="Select variables(s): ")
 transform_label.grid(row=0, column=0, padx=5, pady=5, sticky=tk.W)
-transform_list = tk.Listbox(tab4, height=5, selectmode=tk.SINGLE)
+transform_list = tk.Listbox(transformTab, height=5, selectmode=tk.SINGLE)
 transform_list.grid(row=1, column=0, padx=5, pady=5, sticky=tk.W + tk.E + tk.N + tk.S)
 
 root.mainloop()  # Keep the window open
