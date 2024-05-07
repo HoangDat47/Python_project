@@ -2,7 +2,7 @@ import matplotlib.pyplot as plt
 import pandas as pd
 import tkinter as tk
 from tkinter import *
-from tkinter import filedialog, messagebox, ttk
+from tkinter import filedialog, messagebox, ttk, scrolledtext
 import os
 import traceback
 import numpy as np
@@ -13,17 +13,18 @@ from sklearn.linear_model import LinearRegression, LogisticRegression
 from sklearn.metrics import accuracy_score, mean_squared_error, r2_score
 from sklearn.model_selection import train_test_split
 from sklearn.neighbors import KNeighborsClassifier
+from sklearn.metrics import confusion_matrix 
 from sklearn.preprocessing import LabelEncoder
 
-from keras.utils import to_categorical
-from keras_preprocessing.image import load_img
-from keras.models import Sequential, model_from_json
-from keras.layers import Dense, Conv2D, Dropout, Flatten, MaxPooling2D, Input
+# from keras.utils import to_categorical
+# from keras_preprocessing.image import load_img
+# from keras.models import Sequential, model_from_json
+# from keras.layers import Dense, Conv2D, Dropout, Flatten, MaxPooling2D, Input
 
 from tqdm.notebook import tqdm
 
 root = tk.Tk()
-root.title('App version 1.3.4')
+root.title('App version 1.3.6')
 
 my_ref = {}  # to store references to checkboxes
 i = 1
@@ -32,6 +33,18 @@ data_types = ["int64", "float64", "object"]
 labels = []
 
 # Data functions
+def show_info(df):
+    info_text.delete(1.0, tk.END)  # Xóa nội dung cũ trong widget Text
+    for col in df.columns:
+        info_text.insert(tk.END, f"Column: {col}\n")
+        info_text.insert(tk.END, f"Null values: {df[col].isnull().sum()}\n")
+        info_text.insert(tk.END, f"Unique values: {df[col].nunique()}\n")
+        info_text.insert(tk.END, f"Duplicate values: {df.duplicated().sum()}\n")
+        if df[col].dtype != "object":
+            outline_range = f"{df[col].quantile(0.25)} - {df[col].quantile(0.75)}"
+            info_text.insert(tk.END, f"Outline values: {outline_range}\n")
+        info_text.insert(tk.END, "\n")
+        
 def upload_file():
     global df, tree_list
     f_types = [('CSV files', "*.csv"), ('All', "*.*")]
@@ -161,11 +174,13 @@ def execute_model():
     if isinstance(model_train, LogisticRegression) or isinstance(model_train, KNeighborsClassifier):
         try:
             accuracy = accuracy_score(y_test, y_pred)
-            # Heatmap with selected columns
-            selected_columns_df = df[input_variables + [target_variable]]
-            plt.figure(figsize=(10, 6))
-            sns.heatmap(selected_columns_df.corr(), annot=True, cmap="coolwarm", fmt=".2f")
-            plt.title("Correlation Heatmap for Selected Columns")
+            # Confusion matrix
+            cm = confusion_matrix(y_test, y_pred)
+            plt.figure(figsize=(8, 6))
+            sns.heatmap(cm, annot=True, cmap="Blues", fmt="d")
+            plt.title("Confusion Matrix")
+            plt.xlabel("Predicted")
+            plt.ylabel("Actual")
             plt.text(0.5, 0.95, f"Accuracy: {accuracy}", ha='center', va='top', transform=plt.gca().transAxes, fontsize=10)
             plt.show()
         except Exception as e:
@@ -484,6 +499,33 @@ def execute_visualize():
 #     if index:
 #         listbox.delete(index)
 
+# Transform functions
+def excute_type():
+    # Lấy cột được chọn từ Listbox và chuyển định dạng dữ liệu theo như combobox đã chọn
+    selected_column = transform_list.get(transform_list.curselection())
+    column, dtype = selected_column.split(" {")
+    dtype = dtype[:-1]
+    new_dtype = data_types_combobox.get()
+    if dtype == new_dtype:
+        messagebox.showinfo("Information", f"Column {column} is already {dtype}")
+        return
+    try:
+        if new_dtype == "int64":
+            df[column] = df[column].astype(int)
+        elif new_dtype == "float64":
+            df[column] = df[column].astype(float)
+        elif new_dtype == "object":
+            df[column] = df[column].astype(str)
+        df_clean_label.config(text="Data status: modified")
+        print(f"Column {column} has been changed to {new_dtype}")
+        # Update Listbox
+        transform_list.delete(transform_list.curselection())
+        transform_list.insert(tk.END, f"{column} {{{new_dtype}}}")
+        # inra dataframe type 
+        print(df[column].dtype)
+    except Exception as e:
+        messagebox.showerror("Error", e)  
+    
 # GUI
 left_frame = tk.LabelFrame(root, text='Choose File')
 left_frame.grid(row=0, column=0, padx=10, pady=10)
@@ -501,7 +543,7 @@ transformTab = ttk.Frame(tabControl)
 tabControl.add(dataTab, text='Data')
 tabControl.add(modelTab, text='Model')
 tabControl.add(visualizeTab, text='Visualize')
-tabControl.add(cnnTab, text='CNN model for classification')
+# tabControl.add(cnnTab, text='CNN model for classification')
 tabControl.add(transformTab, text='Transform')
 tabControl.grid(row=0, column=0, columnspan=2)
 
@@ -513,6 +555,9 @@ path_label.grid(row=1, column=1)
 browse_btn = tk.Button(left_frame, text='Browse File',
                        width=20, command=lambda: upload_file())
 browse_btn.grid(row=2, column=1, pady=5)
+df_clean_label = tk.Label(left_frame, text='Data status: unknown')
+df_clean_label.grid(row=3, column=1, pady=5)
+
 count_label = tk.Label(dataTab, width=40, text='',
                        bg='lightyellow')
 count_label.grid(row=3, column=1, padx=5)
@@ -628,5 +673,21 @@ transform_label = tk.Label(transformTab, text="Select variables(s): ")
 transform_label.grid(row=0, column=0, padx=5, pady=5, sticky=tk.W)
 transform_list = tk.Listbox(transformTab, height=5, selectmode=tk.SINGLE)
 transform_list.grid(row=1, column=0, padx=5, pady=5, sticky=tk.W + tk.E + tk.N + tk.S)
+
+data_types_label = tk.Label(transformTab, text="Data types: ")
+data_types_label.grid(row=0, column=1, padx=10, pady=5, sticky=tk.W)
+
+data_types_combobox = ttk.Combobox(transformTab, values=data_types)
+data_types_combobox.grid(row=1, column=1, padx=10, pady=5, sticky=tk.W + tk.E + tk.N + tk.S)
+
+excute_data_transform = tk.Button(transformTab, text="Execute type", command=excute_type)
+excute_data_transform.grid(row=1, column=3, padx=10, pady=5, sticky=tk.W)
+
+data_clean_label = tk.Label(transformTab, text="Data status: unknown")
+data_clean_label.grid(row=2, column=0, padx=5, pady=5, sticky=tk.W)
+
+info_text = scrolledtext.ScrolledText(transformTab, width=60, height=15, wrap=tk.WORD)
+info_text.grid(row=3, column=0, columnspan=4, padx=5, pady=5, sticky=tk.W)
+info_text.config(state=tk.DISABLED)  # Khóa widget Text để người dùng không thể chỉnh sửa
 
 root.mainloop()  # Keep the window open
