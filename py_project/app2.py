@@ -10,14 +10,17 @@ import seaborn as sns
 import matplotlib.pyplot as plt
 from matplotlib.colors import ListedColormap  
 
+
 from sklearn.linear_model import LinearRegression, LogisticRegression
 from sklearn.metrics import accuracy_score, mean_squared_error, r2_score
 from sklearn.model_selection import train_test_split
 from sklearn.neighbors import KNeighborsClassifier
 from sklearn.metrics import confusion_matrix 
 from sklearn.preprocessing import LabelEncoder
+
 from sklearn.preprocessing import StandardScaler    
 from sklearn.ensemble import RandomForestClassifier  
+
 
 from tqdm.notebook import tqdm
 
@@ -177,6 +180,7 @@ def execute_model():
     elif model == "Random Forest":
         model_train = RandomForestClassifier(n_estimators= 10, criterion="entropy")  
         print("Random Forest")
+
     
     model_train.fit(X_train, y_train)
     y_pred = model_train.predict(X_test)
@@ -256,7 +260,6 @@ def selected_vs_type(event):
         column2_label.config(text="")
         column2_combobox.grid_remove()
         column2_combobox.grid_remove()
-        
         vs_graph_type_combobox["values"] = graph_type_2
     elif selected == "2 Categorical":
         column1_label.config(text="Categorical 1")
@@ -278,7 +281,7 @@ def selected_vs_type(event):
         
         column2_label.grid(row=2, column=0, padx=5, pady=5, sticky=tk.W)
         column2_combobox.grid(row=2, column=1, padx=5, pady=5, sticky=tk.W)
-        
+
         vs_graph_type_combobox["values"] = graph_type_4
     elif selected == "2 Quantitative":
         column1_label.config(text="Quantitative 1")
@@ -395,7 +398,7 @@ def execute_visualize():
             line_plot_2_columns(column1, column2)
         elif graph_type == "Scatter Plot":
             scatter_plot_2_columns(column1, column2)
-
+            
 # Transform functions
 def excute_type():
     try:
@@ -418,8 +421,7 @@ def excute_type():
         elif new_dtype == "float64":
             df[column] = df[column].astype(float)
         elif new_dtype == "object":
-            df[column] = df[column].astype(str)
-        
+            df[column] = df[column].astype(str) 
         df_clean_label.config(text="Data status: modified")
         print(f"Column {column} has been changed to {new_dtype}")
         
@@ -444,8 +446,7 @@ tabControl = ttk.Notebook(right_frame)
 dataTab = ttk.Frame(tabControl)
 modelTab = ttk.Frame(tabControl)
 visualizeTab = ttk.Frame(tabControl)
-transformTab = ttk.Frame(tabControl)
-
+cnnTab = ttk.Frame(tabControl)
 tabControl.add(dataTab, text='Data')
 tabControl.add(modelTab, text='Model')
 tabControl.add(visualizeTab, text='Visualize')
@@ -496,7 +497,6 @@ execution_button.grid(row=2, column=3, padx=50, pady=10, sticky=tk.W)
 # Visualize tab
 visualize_title = tk.Label(visualizeTab, text="Visualize Type")
 visualize_title.grid(row=0, column=0, padx=5, pady=5, sticky=tk.W)
-
 vs_type_combobox = ttk.Combobox(visualizeTab, values= ["1 Quantitative", "1 Categorical", "2 Categorical", 
                                                        "1 Categorical - 1 Quantitative", "2 Quantitative"], width=40)
 vs_type_combobox.grid(row=0, column=1, padx=5, pady=5, sticky=tk.W)
