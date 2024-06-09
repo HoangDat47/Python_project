@@ -2,7 +2,7 @@ import matplotlib.pyplot as plt
 import pandas as pd
 import tkinter as tk
 from tkinter import *
-from tkinter import filedialog, messagebox, ttk, scrolledtext
+from tkinter import filedialog, messagebox, ttk
 import os
 import traceback
 import numpy as np
@@ -15,17 +15,17 @@ from sklearn.linear_model import LinearRegression, LogisticRegression
 from sklearn.metrics import accuracy_score, mean_squared_error, r2_score
 from sklearn.model_selection import train_test_split
 from sklearn.neighbors import KNeighborsClassifier
-from sklearn.metrics import confusion_matrix 
 from sklearn.preprocessing import LabelEncoder
 
-from sklearn.preprocessing import StandardScaler    
-from sklearn.ensemble import RandomForestClassifier  
-
+from keras.utils import to_categorical
+from keras_preprocessing.image import load_img
+from keras.models import Sequential, model_from_json
+from keras.layers import Dense, Conv2D, Dropout, Flatten, MaxPooling2D, Input
 
 from tqdm.notebook import tqdm
 
 root = tk.Tk()
-root.title('App version 1.3.6')
+root.title('App version 1.3.4')
 
 df = None  # To store the dataframe
 my_ref = {}  # to store references to checkboxes
@@ -35,18 +35,6 @@ data_types = ["int64", "float64", "object"]
 labels = []
 
 # Data functions
-def show_info(df):
-    info_text.delete(1.0, tk.END)  # Xóa nội dung cũ trong widget Text
-    for col in df.columns:
-        info_text.insert(tk.END, f"Column: {col}\n")
-        info_text.insert(tk.END, f"Null values: {df[col].isnull().sum()}\n")
-        info_text.insert(tk.END, f"Unique values: {df[col].nunique()}\n")
-        info_text.insert(tk.END, f"Duplicate values: {df.duplicated().sum()}\n")
-        if df[col].dtype != "object":
-            outline_range = f"{df[col].quantile(0.25)} - {df[col].quantile(0.75)}"
-            info_text.insert(tk.END, f"Outline values: {outline_range}\n")
-        info_text.insert(tk.END, "\n")
-        
 def upload_file():
     global df, tree_list
     f_types = [('CSV files', "*.csv"), ('All', "*.*")]
@@ -189,13 +177,11 @@ def execute_model():
     if isinstance(model_train, LogisticRegression) or isinstance(model_train, KNeighborsClassifier):
         try:
             accuracy = accuracy_score(y_test, y_pred)
-            # Confusion matrix
-            cm = confusion_matrix(y_test, y_pred)
-            plt.figure(figsize=(8, 6))
-            sns.heatmap(cm, annot=True, cmap="Blues", fmt="d")
-            plt.title("Confusion Matrix")
-            plt.xlabel("Predicted")
-            plt.ylabel("Actual")
+            # Heatmap with selected columns
+            selected_columns_df = df[input_variables + [target_variable]]
+            plt.figure(figsize=(10, 6))
+            sns.heatmap(selected_columns_df.corr(), annot=True, cmap="coolwarm", fmt=".2f")
+            plt.title("Correlation Heatmap for Selected Columns")
             plt.text(0.5, 0.95, f"Accuracy: {accuracy}", ha='center', va='top', transform=plt.gca().transAxes, fontsize=10)
             plt.show()
         except Exception as e:
@@ -398,43 +384,141 @@ def execute_visualize():
             line_plot_2_columns(column1, column2)
         elif graph_type == "Scatter Plot":
             scatter_plot_2_columns(column1, column2)
-            
-# Transform functions
-def excute_type():
-    try:
-        selected_index = transform_list.curselection()
-        if not selected_index:
-            messagebox.showerror("Error", "No column selected. Please select a column from the list.")
-            return
-        
-        selected_column = transform_list.get(selected_index)
-        column, dtype = selected_column.split(" {")
-        dtype = dtype[:-1]
-        new_dtype = data_types_combobox.get()
-        
-        if dtype == new_dtype:
-            messagebox.showinfo("Information", f"Column {column} is already {dtype}")
-            return
-        
-        if new_dtype == "int32":
-            df[column] = df[column].astype(int)
-        elif new_dtype == "float64":
-            df[column] = df[column].astype(float)
-        elif new_dtype == "object":
-            df[column] = df[column].astype(str) 
-        df_clean_label.config(text="Data status: modified")
-        print(f"Column {column} has been changed to {new_dtype}")
-        
-        # Update Listbox
-        transform_list.delete(selected_index)
-        transform_list.insert(tk.END, f"{column} {{{new_dtype}}}")
-        
-        # Print dataframe type
-        print(df[column].dtype)
-        
-    except Exception as e:
-        messagebox.showerror("Error", str(e))  
     
+# CNN functions        
+# def create_cnn_df(dir):
+#     image_paths = []
+#     labels = []
+#     for label in os.listdir(dir):
+#         for imagename in os.listdir(os.path.join(dir, label)):
+#             image_paths.append(os.path.join(dir, label, imagename))
+#             labels.append(label)
+#         print(label, "completed")
+#     return image_paths, labels
+
+# def choose_train_dir():
+#     global train, TRAIN_DIR
+#     TRAIN_DIR = filedialog.askdirectory()
+#     train_dir_label.config(text=TRAIN_DIR)
+#     train = pd.DataFrame()
+#     train['image'], train['label'] = create_cnn_df(TRAIN_DIR)
+
+# def choose_test_dir():
+#     global test, TEST_DIR
+#     TEST_DIR = filedialog.askdirectory()
+#     test_dir_label.config(text=TEST_DIR)
+#     test = pd.DataFrame()
+#     test['image'], test['label'] = create_cnn_df(TEST_DIR)
+
+# def extract_features(images):
+#     features = []
+#     for image in tqdm(images):
+#         img = load_img(image, color_mode='grayscale', target_size=(48, 48))
+#         img = np.array(img)
+#         features.append(img)
+#     features = np.array(features)
+#     features = features.reshape(len(features), 48, 48, 1)
+#     return features
+
+# def train_model():
+#     train_features = extract_features(train['image'])
+#     test_features = extract_features(test['image'])
+
+#     x_train = train_features/255.0
+#     x_test = test_features/255.0
+
+#     le = LabelEncoder()
+#     le.fit(train['label'])
+
+#     y_train = le.transform(train['label'])
+#     y_test = le.transform(test['label'])
+
+#     y_train = to_categorical(y_train, num_classes=7)
+#     y_test = to_categorical(y_test, num_classes=7)
+
+#     model = Sequential()
+#     model.add(Input(shape=(48, 48, 1)))
+
+#     model.add(Conv2D(128, kernel_size=(3, 3), activation='relu'))
+#     model.add(MaxPooling2D(pool_size=(2, 2)))
+#     model.add(Dropout(0.4))
+
+#     model.add(Conv2D(256, kernel_size=(3, 3), activation='relu'))
+#     model.add(MaxPooling2D(pool_size=(2, 2)))
+#     model.add(Dropout(0.4))
+
+#     model.add(Conv2D(512, kernel_size=(3, 3), activation='relu'))
+#     model.add(MaxPooling2D(pool_size=(2, 2)))
+#     model.add(Dropout(0.4))
+
+#     model.add(Conv2D(512, kernel_size=(3, 3), activation='relu'))
+#     model.add(MaxPooling2D(pool_size=(2, 2)))
+#     model.add(Dropout(0.4))
+
+#     model.add(Flatten())
+
+#     model.add(Dense(128, activation='relu'))
+#     model.add(Dropout(0.2))
+#     model.add(Dense(128, activation='relu'))
+#     model.add(Dropout(0.2))
+
+#     model.add(Dense(7, activation='softmax'))
+
+#     model.compile(optimizer='adam',
+#                   loss='categorical_crossentropy', metrics=['accuracy'])
+#     model.fit(x_train, y_train, epochs=5, batch_size=64,
+#               validation_data=(x_test, y_test))
+
+#     model_json = model.to_json()
+#     with open("trained_model.json", 'w') as json_file:
+#         json_file.write(model_json)
+#     model.save("trained_model.h5")
+
+# def choose_json():
+#     global json_file_path, model_json
+#     json_file_path = filedialog.askopenfilename(filetypes=(("JSON files", "*.json"), ("All files", "*.*")))
+#     if json_file_path:
+#         json_file = open(json_file_path, 'r')
+#         model_json_label.config(text=json_file_path)
+#         model_json = json_file.read()
+#         json_file.close()
+
+# def choose_model():
+#     global model, loaded_model
+#     model = model_from_json(model_json)
+#     model_h5_path = filedialog.askopenfilename(filetypes=(("H5 files", "*.h5"), ("All files", "*.*")))
+#     if model_h5_path:
+#         model_h5_label.config(text=model_h5_path)
+#         model.load_weights(model_h5_path)
+        
+# def choose_input():
+#     image = filedialog.askopenfilename()
+#     input_label.config(text=image)
+#     img = load_img(image, color_mode="grayscale")
+#     feature = np.array(img)
+#     feature = feature.reshape(1, 48, 48, 1)
+#     img = feature/255.0
+#     pred = model.predict(img)
+#     labels = [listbox.get(index) for index in range(listbox.size())]
+#     pred_label = labels[pred.argmax()]
+#     plt.title('Prediction: ' + pred_label)
+#     plt.imshow(img.reshape(48, 48), cmap='gray')
+#     plt.axis('off')
+#     plt.show()
+
+# def add_label():
+#     input_text = label_input.get()
+#     words = input_text.split(' ')
+#     for word in words:
+#         if word not in listbox.get(0, tk.END):
+#             listbox.insert(tk.END, word.lower())
+#     label_input.delete(0, tk.END)
+    
+# def remove_item(event):
+#     index = listbox.curselection()
+#     if index:
+#         listbox.delete(index)
+
 # GUI
 left_frame = tk.LabelFrame(root, text='Choose File')
 left_frame.grid(row=0, column=0, padx=10, pady=10)
@@ -450,6 +534,7 @@ cnnTab = ttk.Frame(tabControl)
 tabControl.add(dataTab, text='Data')
 tabControl.add(modelTab, text='Model')
 tabControl.add(visualizeTab, text='Visualize')
+tabControl.add(cnnTab, text='CNN model for classification')
 tabControl.add(transformTab, text='Transform')
 tabControl.grid(row=0, column=0, columnspan=2)
 
@@ -461,9 +546,6 @@ path_label.grid(row=1, column=1)
 browse_btn = tk.Button(left_frame, text='Browse File',
                        width=20, command=lambda: upload_file())
 browse_btn.grid(row=2, column=1, pady=5)
-df_clean_label = tk.Label(left_frame, text='Data status: unknown')
-df_clean_label.grid(row=3, column=1, pady=5)
-
 count_label = tk.Label(dataTab, width=40, text='',
                        bg='lightyellow')
 count_label.grid(row=3, column=1, padx=5)
@@ -528,21 +610,5 @@ transform_label = tk.Label(transformTab, text="Select variables(s): ")
 transform_label.grid(row=0, column=0, padx=5, pady=5, sticky=tk.W)
 transform_list = tk.Listbox(transformTab, height=5, selectmode=tk.SINGLE)
 transform_list.grid(row=1, column=0, padx=5, pady=5, sticky=tk.W + tk.E + tk.N + tk.S)
-
-data_types_label = tk.Label(transformTab, text="Data types: ")
-data_types_label.grid(row=0, column=1, padx=10, pady=5, sticky=tk.W)
-
-data_types_combobox = ttk.Combobox(transformTab, values=data_types)
-data_types_combobox.grid(row=1, column=1, padx=10, pady=5, sticky=tk.W + tk.E + tk.N + tk.S)
-
-excute_data_transform = tk.Button(transformTab, text="Execute type", command=excute_type)
-excute_data_transform.grid(row=1, column=3, padx=10, pady=5, sticky=tk.W)
-
-data_clean_label = tk.Label(transformTab, text="Data status: unknown")
-data_clean_label.grid(row=2, column=0, padx=5, pady=5, sticky=tk.W)
-
-info_text = scrolledtext.ScrolledText(transformTab, width=60, height=15, wrap=tk.WORD)
-info_text.grid(row=3, column=0, columnspan=4, padx=5, pady=5, sticky=tk.W)
-info_text.config(state=tk.DISABLED)  # Khóa widget Text để người dùng không thể chỉnh sửa
 
 root.mainloop()  # Keep the window open
