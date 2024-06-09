@@ -1,5 +1,4 @@
 import os
-import sys
 from tkinter import Checkbutton, IntVar, filedialog
 
 from matplotlib import pyplot as plt
@@ -127,7 +126,7 @@ def execute_model():
             # Confusion matrix
             cm = confusion_matrix(y_test, y_pred)
             plt.figure(figsize=(8, 6))
-            sys.heatmap(cm, annot=True, cmap="Blues", fmt="d")
+            sns.heatmap(cm, annot=True, cmap="Blues", fmt="d")
             plt.title("Confusion Matrix")
             plt.xlabel("Predicted")
             plt.ylabel("Actual")
