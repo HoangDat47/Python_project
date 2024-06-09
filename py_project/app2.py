@@ -24,6 +24,7 @@ from tqdm.notebook import tqdm
 root = tk.Tk()
 root.title('App version 1.3.6')
 
+df = None  # To store the dataframe
 my_ref = {}  # to store references to checkboxes
 i = 1
 selected_checkboxes = []  # To store the checkbuttons which are checked
