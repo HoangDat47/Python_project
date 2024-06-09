@@ -8,6 +8,7 @@ import traceback
 import numpy as np
 import seaborn as sns
 import matplotlib.pyplot as plt
+from matplotlib.colors import ListedColormap  
 
 from sklearn.linear_model import LinearRegression, LogisticRegression
 from sklearn.metrics import accuracy_score, mean_squared_error, r2_score
@@ -15,11 +16,8 @@ from sklearn.model_selection import train_test_split
 from sklearn.neighbors import KNeighborsClassifier
 from sklearn.metrics import confusion_matrix 
 from sklearn.preprocessing import LabelEncoder
-
-# from keras.utils import to_categorical
-# from keras_preprocessing.image import load_img
-# from keras.models import Sequential, model_from_json
-# from keras.layers import Dense, Conv2D, Dropout, Flatten, MaxPooling2D, Input
+from sklearn.preprocessing import StandardScaler    
+from sklearn.ensemble import RandomForestClassifier  
 
 from tqdm.notebook import tqdm
 
@@ -152,8 +150,16 @@ def execute_model():
     X = df[input_variables]
     y = df[target_variable]
     X_train, X_test, y_train, y_test = train_test_split(
-        X, y, test_size=0.2, random_state=42
+        X, y, test_size=0.33, random_state=42
     )
+    
+    print("X_train shape:", X_train.shape)
+    print("X_test shape:", X_test.shape)
+    
+    #future scaling
+    st_x= StandardScaler()    
+    X_train= st_x.fit_transform(X_train)    
+    X_test= st_x.transform(X_test)  
 
     model = model_combobox.get()
 
@@ -167,9 +173,13 @@ def execute_model():
     elif model == "Linear Regression":
         model_train = LinearRegression()
         print("Linear Regression")
+    elif model == "Random Forest":
+        model_train = RandomForestClassifier(n_estimators= 10, criterion="entropy")  
+        print("Random Forest")
     
     model_train.fit(X_train, y_train)
     y_pred = model_train.predict(X_test)
+    print("y_pred:", y_pred)
 
     if isinstance(model_train, LogisticRegression) or isinstance(model_train, KNeighborsClassifier):
         try:
@@ -195,6 +205,26 @@ def execute_model():
         plt.ylabel("Predicted")
         plt.title("Scatter plot")
         plt.text(0.5, 0.95, f"R-squared: {r2}", ha='center', va='top', transform=plt.gca().transAxes, fontsize=10)
+        plt.show()
+    elif isinstance(model_train, RandomForestClassifier):
+        accuracy = accuracy_score(y_test, y_pred)
+        cm = confusion_matrix(y_test, y_pred)
+        
+        X_set, y_set = X_test, y_test  
+        x1, x2 = np.meshgrid(np.arange(start = X_set[:, 0].min() - 1, stop = X_set[:, 0].max() + 1, step  =0.01), 
+                            np.arange(start = X_set[:, 1].min() - 1, stop = X_set[:, 1].max() + 1, step = 0.01))
+        plt.contourf(x1, x2, model_train.predict(np.array([x1.ravel(), x2.ravel()]).T).reshape(x1.shape),  
+                     alpha = 0.75, cmap = ListedColormap(('purple', 'green')))
+        plt.xlim(x1.min(), x1.max())
+        plt.ylim(x2.min(), x2.max())
+        for i, j in enumerate(np.unique(y_set)):
+            plt.scatter(X_set[y_set == j, 0], X_set[y_set == j, 1],  
+                        c = ListedColormap(('purple', 'green'))(i), label = j)
+        plt.title('Random Forest Classification')
+        plt.xlabel('Independent ')
+        plt.ylabel('Dependent')
+        plt.legend()
+        plt.text(0.5, 0.95, f"Accuracy: {accuracy}", ha='center', va='top', transform=plt.gca().transAxes, fontsize=10)
         plt.show()
 
 # Visualize functions
@@ -364,167 +394,43 @@ def execute_visualize():
             line_plot_2_columns(column1, column2)
         elif graph_type == "Scatter Plot":
             scatter_plot_2_columns(column1, column2)
-    
-# CNN functions        
-# def create_cnn_df(dir):
-#     image_paths = []
-#     labels = []
-#     for label in os.listdir(dir):
-#         for imagename in os.listdir(os.path.join(dir, label)):
-#             image_paths.append(os.path.join(dir, label, imagename))
-#             labels.append(label)
-#         print(label, "completed")
-#     return image_paths, labels
-
-# def choose_train_dir():
-#     global train, TRAIN_DIR
-#     TRAIN_DIR = filedialog.askdirectory()
-#     train_dir_label.config(text=TRAIN_DIR)
-#     train = pd.DataFrame()
-#     train['image'], train['label'] = create_cnn_df(TRAIN_DIR)
-
-# def choose_test_dir():
-#     global test, TEST_DIR
-#     TEST_DIR = filedialog.askdirectory()
-#     test_dir_label.config(text=TEST_DIR)
-#     test = pd.DataFrame()
-#     test['image'], test['label'] = create_cnn_df(TEST_DIR)
-
-# def extract_features(images):
-#     features = []
-#     for image in tqdm(images):
-#         img = load_img(image, color_mode='grayscale', target_size=(48, 48))
-#         img = np.array(img)
-#         features.append(img)
-#     features = np.array(features)
-#     features = features.reshape(len(features), 48, 48, 1)
-#     return features
-
-# def train_model():
-#     train_features = extract_features(train['image'])
-#     test_features = extract_features(test['image'])
-
-#     x_train = train_features/255.0
-#     x_test = test_features/255.0
-
-#     le = LabelEncoder()
-#     le.fit(train['label'])
-
-#     y_train = le.transform(train['label'])
-#     y_test = le.transform(test['label'])
-
-#     y_train = to_categorical(y_train, num_classes=7)
-#     y_test = to_categorical(y_test, num_classes=7)
-
-#     model = Sequential()
-#     model.add(Input(shape=(48, 48, 1)))
-
-#     model.add(Conv2D(128, kernel_size=(3, 3), activation='relu'))
-#     model.add(MaxPooling2D(pool_size=(2, 2)))
-#     model.add(Dropout(0.4))
-
-#     model.add(Conv2D(256, kernel_size=(3, 3), activation='relu'))
-#     model.add(MaxPooling2D(pool_size=(2, 2)))
-#     model.add(Dropout(0.4))
-
-#     model.add(Conv2D(512, kernel_size=(3, 3), activation='relu'))
-#     model.add(MaxPooling2D(pool_size=(2, 2)))
-#     model.add(Dropout(0.4))
-
-#     model.add(Conv2D(512, kernel_size=(3, 3), activation='relu'))
-#     model.add(MaxPooling2D(pool_size=(2, 2)))
-#     model.add(Dropout(0.4))
-
-#     model.add(Flatten())
-
-#     model.add(Dense(128, activation='relu'))
-#     model.add(Dropout(0.2))
-#     model.add(Dense(128, activation='relu'))
-#     model.add(Dropout(0.2))
-
-#     model.add(Dense(7, activation='softmax'))
-
-#     model.compile(optimizer='adam',
-#                   loss='categorical_crossentropy', metrics=['accuracy'])
-#     model.fit(x_train, y_train, epochs=5, batch_size=64,
-#               validation_data=(x_test, y_test))
-
-#     model_json = model.to_json()
-#     with open("trained_model.json", 'w') as json_file:
-#         json_file.write(model_json)
-#     model.save("trained_model.h5")
-
-# def choose_json():
-#     global json_file_path, model_json
-#     json_file_path = filedialog.askopenfilename(filetypes=(("JSON files", "*.json"), ("All files", "*.*")))
-#     if json_file_path:
-#         json_file = open(json_file_path, 'r')
-#         model_json_label.config(text=json_file_path)
-#         model_json = json_file.read()
-#         json_file.close()
-
-# def choose_model():
-#     global model, loaded_model
-#     model = model_from_json(model_json)
-#     model_h5_path = filedialog.askopenfilename(filetypes=(("H5 files", "*.h5"), ("All files", "*.*")))
-#     if model_h5_path:
-#         model_h5_label.config(text=model_h5_path)
-#         model.load_weights(model_h5_path)
-        
-# def choose_input():
-#     image = filedialog.askopenfilename()
-#     input_label.config(text=image)
-#     img = load_img(image, color_mode="grayscale")
-#     feature = np.array(img)
-#     feature = feature.reshape(1, 48, 48, 1)
-#     img = feature/255.0
-#     pred = model.predict(img)
-#     labels = [listbox.get(index) for index in range(listbox.size())]
-#     pred_label = labels[pred.argmax()]
-#     plt.title('Prediction: ' + pred_label)
-#     plt.imshow(img.reshape(48, 48), cmap='gray')
-#     plt.axis('off')
-#     plt.show()
-
-# def add_label():
-#     input_text = label_input.get()
-#     words = input_text.split(' ')
-#     for word in words:
-#         if word not in listbox.get(0, tk.END):
-#             listbox.insert(tk.END, word.lower())
-#     label_input.delete(0, tk.END)
-    
-# def remove_item(event):
-#     index = listbox.curselection()
-#     if index:
-#         listbox.delete(index)
 
 # Transform functions
 def excute_type():
-    # Lấy cột được chọn từ Listbox và chuyển định dạng dữ liệu theo như combobox đã chọn
-    selected_column = transform_list.get(transform_list.curselection())
-    column, dtype = selected_column.split(" {")
-    dtype = dtype[:-1]
-    new_dtype = data_types_combobox.get()
-    if dtype == new_dtype:
-        messagebox.showinfo("Information", f"Column {column} is already {dtype}")
-        return
     try:
-        if new_dtype == "int64":
+        selected_index = transform_list.curselection()
+        if not selected_index:
+            messagebox.showerror("Error", "No column selected. Please select a column from the list.")
+            return
+        
+        selected_column = transform_list.get(selected_index)
+        column, dtype = selected_column.split(" {")
+        dtype = dtype[:-1]
+        new_dtype = data_types_combobox.get()
+        
+        if dtype == new_dtype:
+            messagebox.showinfo("Information", f"Column {column} is already {dtype}")
+            return
+        
+        if new_dtype == "int32":
             df[column] = df[column].astype(int)
         elif new_dtype == "float64":
             df[column] = df[column].astype(float)
         elif new_dtype == "object":
             df[column] = df[column].astype(str)
+        
         df_clean_label.config(text="Data status: modified")
         print(f"Column {column} has been changed to {new_dtype}")
+        
         # Update Listbox
-        transform_list.delete(transform_list.curselection())
+        transform_list.delete(selected_index)
         transform_list.insert(tk.END, f"{column} {{{new_dtype}}}")
-        # inra dataframe type 
+        
+        # Print dataframe type
         print(df[column].dtype)
+        
     except Exception as e:
-        messagebox.showerror("Error", e)  
+        messagebox.showerror("Error", str(e))  
     
 # GUI
 left_frame = tk.LabelFrame(root, text='Choose File')
@@ -537,13 +443,11 @@ tabControl = ttk.Notebook(right_frame)
 dataTab = ttk.Frame(tabControl)
 modelTab = ttk.Frame(tabControl)
 visualizeTab = ttk.Frame(tabControl)
-cnnTab = ttk.Frame(tabControl)
 transformTab = ttk.Frame(tabControl)
 
 tabControl.add(dataTab, text='Data')
 tabControl.add(modelTab, text='Model')
 tabControl.add(visualizeTab, text='Visualize')
-# tabControl.add(cnnTab, text='CNN model for classification')
 tabControl.add(transformTab, text='Transform')
 tabControl.grid(row=0, column=0, columnspan=2)
 
@@ -581,7 +485,7 @@ model_label = tk.Label(modelTab, text="Choose Model")
 model_label.grid(row=0, column=3, padx=50, pady=10, sticky=tk.W)
 
 model_combobox = ttk.Combobox(
-    modelTab, values=["Logistic Regression", "KNN", "Linear Regression"]
+    modelTab, values=["Logistic Regression", "KNN", "Linear Regression", "Random Forest"]
 )
 model_combobox.grid(row=1, column=3, padx=50, sticky=tk.W)
 
@@ -617,56 +521,6 @@ vs_graph_type_combobox.grid(row=3, column=1, padx=5, pady=5, sticky=tk.W)
 
 excute_btn = tk.Button(visualizeTab, text="Execute", command=execute_visualize)
 excute_btn.grid(row=4, column=1, padx=5, pady=5, sticky=tk.W)
-
-# CNN tab
-# train_dir_label = tk.Label(cnnTab, text="Train Directory")
-# train_dir_label.grid(row=0, column=0, padx=5, pady=5, sticky=tk.W)
-
-# train_dir_btn = tk.Button(cnnTab, text="Browse", command=choose_train_dir)
-# train_dir_btn.grid(row=0, column=1, padx=5, pady=5, sticky=tk.W)
-
-# test_dir_label = tk.Label(cnnTab, text="Test Directory")
-# test_dir_label.grid(row=1, column=0, padx=5, pady=5, sticky=tk.W)
-
-# test_dir_btn = tk.Button(cnnTab, text="Browse", command=choose_test_dir)
-# test_dir_btn.grid(row=1, column=1, padx=5, pady=5, sticky=tk.W)
-
-# train_model_btn = tk.Button(cnnTab, text="Train", width=20, command=train_model)
-# train_model_btn.grid(row=2, column=0, padx=5, pady=5, sticky=tk.W)
-
-# or_label = tk.Label(cnnTab, text="Choose model from file")
-# or_label = or_label.grid(row=3, column=0, padx=5, pady=5, sticky=tk.W)
-
-# model_json_label = tk.Label(cnnTab, text="Model json file")
-# model_json_label.grid(row=4, column=0, padx=5, pady=5, sticky=tk.W)
-
-# choose_json_btn = tk.Button(cnnTab, text="Browse", command=choose_json)
-# choose_json_btn.grid(row=4, column=1, padx=5, pady=5, sticky=tk.W)
-
-# model_h5_label = tk.Label(cnnTab, text="Model h5 file")
-# model_h5_label.grid(row=5, column=0, padx=5, pady=5, sticky=tk.W)
-
-# choose_model_btn = tk.Button(cnnTab, text="Browse", command=choose_model)
-# choose_model_btn.grid(row=5, column=1, padx=5, pady=5, sticky=tk.W)
-
-# listbox = tk.Listbox(cnnTab)
-# listbox.grid(row=8, column=0, padx=5, pady=5, sticky=tk.W)
-# listbox.bind("<Double-1>", remove_item)
-
-# add_labels_label = tk.Label(cnnTab, text="Add labels")
-# add_labels_label.grid(row=7, column=0, padx=5, pady=5, sticky=tk.W)
-
-# label_input = tk.Entry(cnnTab, width=20)
-# label_input.grid(row=7, column=1, padx=5, pady=5, sticky=tk.W)
-
-# add_label_btn = tk.Button(cnnTab, text="Add", command=add_label)
-# add_label_btn.grid(row=7, column=2, padx=5, pady=5, sticky=tk.W)
-
-# choose_input_label = tk.Label(cnnTab, text="Choose input picture")
-# choose_input_label.grid(row=9, column=0, padx=5, pady=5, sticky=tk.W)
-
-# choose_input_btn = tk.Button(cnnTab, text="Browse", command=choose_input)
-# choose_input_btn.grid(row=9, column=1, padx=5, pady=5, sticky=tk.W)
 
 # Transform tab
 transform_label = tk.Label(transformTab, text="Select variables(s): ")
