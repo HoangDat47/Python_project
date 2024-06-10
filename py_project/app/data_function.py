@@ -13,6 +13,7 @@ from sklearn.linear_model import LinearRegression, LogisticRegression
 from sklearn.metrics import confusion_matrix, accuracy_score, r2_score
 from sklearn.model_selection import train_test_split
 from sklearn.neighbors import KNeighborsClassifier
+from sklearn.tree import DecisionTreeClassifier
 
 def upload_file():
     from gui import trv, count_label, path_label, target_combobox  # Di chuyển import vào hàm upload_to_GUI
@@ -112,6 +113,9 @@ def execute_model():
     elif model == "Linear Regression":
         model_train = LinearRegression()
         print("Linear Regression")
+    elif model == "Decision Tree":
+        model_train = DecisionTreeClassifier(criterion="entropy")
+        print("Decision Tree")
     elif model == "Random Forest":
         model_train = RandomForestClassifier(n_estimators= 10, criterion="entropy")  
         print("Random Forest")
@@ -145,7 +149,7 @@ def execute_model():
         plt.title("Scatter plot")
         plt.text(0.5, 0.95, f"R-squared: {r2}", ha='center', va='top', transform=plt.gca().transAxes, fontsize=10)
         plt.show()
-    elif isinstance(model_train, RandomForestClassifier):
+    elif isinstance(model_train, DecisionTreeClassifier) or isinstance(model_train, RandomForestClassifier):
         accuracy = accuracy_score(y_test, y_pred)
         cm = confusion_matrix(y_test, y_pred)
         

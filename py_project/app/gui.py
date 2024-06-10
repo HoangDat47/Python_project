@@ -1,5 +1,5 @@
 import tkinter as tk
-from tkinter import ttk, scrolledtext
+from tkinter import ttk
 from data_function import upload_file, execute_model, execute_visualize, selected_vs_type
 
 root = tk.Tk()
@@ -26,7 +26,7 @@ tabControl.grid(row=0, column=0, columnspan=2)
 
 # Data tab
 my_font1 = ('times', 12, 'bold')
-path_label = tk.Label(left_frame, text='Read File & create DataFrame',
+path_label = tk.Label(left_frame, text='Choose File:',
                       width=30, font=my_font1)
 path_label.grid(row=1, column=1)
 browse_btn = tk.Button(left_frame, text='Browse File',
@@ -56,7 +56,7 @@ model_label = tk.Label(modelTab, text="Choose Model")
 model_label.grid(row=0, column=3, padx=50, pady=10, sticky=tk.W)
 
 model_combobox = ttk.Combobox(
-    modelTab, values=["Logistic Regression", "KNN", "Linear Regression", "Random Forest"]
+    modelTab, values=["Logistic Regression", "KNN", "Linear Regression", "Decision Tree", "Random Forest"]
 )
 model_combobox.grid(row=1, column=3, padx=50, sticky=tk.W)
 

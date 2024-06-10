@@ -2,12 +2,10 @@ import matplotlib.pyplot as plt
 import pandas as pd
 import tkinter as tk
 from tkinter import *
-from tkinter import filedialog, messagebox, ttk, scrolledtext
+from tkinter import filedialog, ttk
 import os
-import traceback
 import numpy as np
 import seaborn as sns
-import matplotlib.pyplot as plt
 from matplotlib.colors import ListedColormap  
 
 
@@ -35,17 +33,17 @@ data_types = ["int64", "float64", "object"]
 labels = []
 
 # Data functions
-def show_info(df):
-    info_text.delete(1.0, tk.END)  # Xóa nội dung cũ trong widget Text
-    for col in df.columns:
-        info_text.insert(tk.END, f"Column: {col}\n")
-        info_text.insert(tk.END, f"Null values: {df[col].isnull().sum()}\n")
-        info_text.insert(tk.END, f"Unique values: {df[col].nunique()}\n")
-        info_text.insert(tk.END, f"Duplicate values: {df.duplicated().sum()}\n")
-        if df[col].dtype != "object":
-            outline_range = f"{df[col].quantile(0.25)} - {df[col].quantile(0.75)}"
-            info_text.insert(tk.END, f"Outline values: {outline_range}\n")
-        info_text.insert(tk.END, "\n")
+# def show_info(df):
+#     info_text.delete(1.0, tk.END)  # Xóa nội dung cũ trong widget Text
+#     for col in df.columns:
+#         info_text.insert(tk.END, f"Column: {col}\n")
+#         info_text.insert(tk.END, f"Null values: {df[col].isnull().sum()}\n")
+#         info_text.insert(tk.END, f"Unique values: {df[col].nunique()}\n")
+#         info_text.insert(tk.END, f"Duplicate values: {df.duplicated().sum()}\n")
+#         if df[col].dtype != "object":
+#             outline_range = f"{df[col].quantile(0.25)} - {df[col].quantile(0.75)}"
+#             info_text.insert(tk.END, f"Outline values: {outline_range}\n")
+#         info_text.insert(tk.END, "\n")
         
 def upload_file():
     global df, tree_list
@@ -69,8 +67,8 @@ def upload_file():
         # Tạo danh sách tên cột cùng với định dạng dữ liệu của chúng
         columns_with_dtype = [f"{col} {{{dtype}}}" for col in columns]
         # Thêm danh sách cột vào Listbox
-        for col in columns_with_dtype:
-            transform_list.insert(tk.END, col)
+        # for col in columns_with_dtype:
+        #     transform_list.insert(tk.END, col)
 
 def my_search():
     # Lấy giá trị từ Entry và chuyển về chữ thường
@@ -400,40 +398,40 @@ def execute_visualize():
             scatter_plot_2_columns(column1, column2)
             
 # Transform functions
-def excute_type():
-    try:
-        selected_index = transform_list.curselection()
-        if not selected_index:
-            messagebox.showerror("Error", "No column selected. Please select a column from the list.")
-            return
+# def excute_type():
+#     try:
+#         selected_index = transform_list.curselection()
+#         if not selected_index:
+#             messagebox.showerror("Error", "No column selected. Please select a column from the list.")
+#             return
         
-        selected_column = transform_list.get(selected_index)
-        column, dtype = selected_column.split(" {")
-        dtype = dtype[:-1]
-        new_dtype = data_types_combobox.get()
+#         selected_column = transform_list.get(selected_index)
+#         column, dtype = selected_column.split(" {")
+#         dtype = dtype[:-1]
+#         new_dtype = data_types_combobox.get()
         
-        if dtype == new_dtype:
-            messagebox.showinfo("Information", f"Column {column} is already {dtype}")
-            return
+#         if dtype == new_dtype:
+#             messagebox.showinfo("Information", f"Column {column} is already {dtype}")
+#             return
         
-        if new_dtype == "int32":
-            df[column] = df[column].astype(int)
-        elif new_dtype == "float64":
-            df[column] = df[column].astype(float)
-        elif new_dtype == "object":
-            df[column] = df[column].astype(str) 
-        df_clean_label.config(text="Data status: modified")
-        print(f"Column {column} has been changed to {new_dtype}")
+#         if new_dtype == "int32":
+#             df[column] = df[column].astype(int)
+#         elif new_dtype == "float64":
+#             df[column] = df[column].astype(float)
+#         elif new_dtype == "object":
+#             df[column] = df[column].astype(str) 
+#         df_clean_label.config(text="Data status: modified")
+#         print(f"Column {column} has been changed to {new_dtype}")
         
-        # Update Listbox
-        transform_list.delete(selected_index)
-        transform_list.insert(tk.END, f"{column} {{{new_dtype}}}")
+#         # Update Listbox
+#         # transform_list.delete(selected_index)
+#         # transform_list.insert(tk.END, f"{column} {{{new_dtype}}}")
         
-        # Print dataframe type
-        print(df[column].dtype)
+#         # Print dataframe type
+#         print(df[column].dtype)
         
-    except Exception as e:
-        messagebox.showerror("Error", str(e))  
+#     except Exception as e:
+#         messagebox.showerror("Error", str(e))  
     
 # GUI
 left_frame = tk.LabelFrame(root, text='Choose File')
@@ -450,7 +448,7 @@ cnnTab = ttk.Frame(tabControl)
 tabControl.add(dataTab, text='Data')
 tabControl.add(modelTab, text='Model')
 tabControl.add(visualizeTab, text='Visualize')
-tabControl.add(transformTab, text='Transform')
+#tabControl.add(transformTab, text='Transform')
 tabControl.grid(row=0, column=0, columnspan=2)
 
 # Data tab
@@ -524,25 +522,25 @@ excute_btn = tk.Button(visualizeTab, text="Execute", command=execute_visualize)
 excute_btn.grid(row=4, column=1, padx=5, pady=5, sticky=tk.W)
 
 # Transform tab
-transform_label = tk.Label(transformTab, text="Select variables(s): ")
-transform_label.grid(row=0, column=0, padx=5, pady=5, sticky=tk.W)
-transform_list = tk.Listbox(transformTab, height=5, selectmode=tk.SINGLE)
-transform_list.grid(row=1, column=0, padx=5, pady=5, sticky=tk.W + tk.E + tk.N + tk.S)
+# transform_label = tk.Label(transformTab, text="Select variables(s): ")
+# transform_label.grid(row=0, column=0, padx=5, pady=5, sticky=tk.W)
+# transform_list = tk.Listbox(transformTab, height=5, selectmode=tk.SINGLE)
+# transform_list.grid(row=1, column=0, padx=5, pady=5, sticky=tk.W + tk.E + tk.N + tk.S)
 
-data_types_label = tk.Label(transformTab, text="Data types: ")
-data_types_label.grid(row=0, column=1, padx=10, pady=5, sticky=tk.W)
+# data_types_label = tk.Label(transformTab, text="Data types: ")
+# data_types_label.grid(row=0, column=1, padx=10, pady=5, sticky=tk.W)
 
-data_types_combobox = ttk.Combobox(transformTab, values=data_types)
-data_types_combobox.grid(row=1, column=1, padx=10, pady=5, sticky=tk.W + tk.E + tk.N + tk.S)
+# data_types_combobox = ttk.Combobox(transformTab, values=data_types)
+# data_types_combobox.grid(row=1, column=1, padx=10, pady=5, sticky=tk.W + tk.E + tk.N + tk.S)
 
-excute_data_transform = tk.Button(transformTab, text="Execute type", command=excute_type)
-excute_data_transform.grid(row=1, column=3, padx=10, pady=5, sticky=tk.W)
+# excute_data_transform = tk.Button(transformTab, text="Execute type", command=excute_type)
+# excute_data_transform.grid(row=1, column=3, padx=10, pady=5, sticky=tk.W)
 
-data_clean_label = tk.Label(transformTab, text="Data status: unknown")
-data_clean_label.grid(row=2, column=0, padx=5, pady=5, sticky=tk.W)
+# data_clean_label = tk.Label(transformTab, text="Data status: unknown")
+# data_clean_label.grid(row=2, column=0, padx=5, pady=5, sticky=tk.W)
 
-info_text = scrolledtext.ScrolledText(transformTab, width=60, height=15, wrap=tk.WORD)
-info_text.grid(row=3, column=0, columnspan=4, padx=5, pady=5, sticky=tk.W)
-info_text.config(state=tk.DISABLED)  # Khóa widget Text để người dùng không thể chỉnh sửa
+# info_text = scrolledtext.ScrolledText(transformTab, width=60, height=15, wrap=tk.WORD)
+# info_text.grid(row=3, column=0, columnspan=4, padx=5, pady=5, sticky=tk.W)
+# info_text.config(state=tk.DISABLED)  # Khóa widget Text để người dùng không thể chỉnh sửa
 
 root.mainloop()  # Keep the window open
