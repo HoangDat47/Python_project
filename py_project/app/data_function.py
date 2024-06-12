@@ -1,11 +1,10 @@
 import os
-from tkinter import Checkbutton, IntVar, filedialog
-
-from matplotlib import pyplot as plt
-from matplotlib.colors import ListedColormap
 import numpy as np
 import pandas as pd
 import seaborn as sns
+from tkinter import Checkbutton, IntVar, filedialog, messagebox
+from matplotlib import pyplot as plt
+from matplotlib.colors import ListedColormap
 from sklearn.calibration import LabelEncoder
 from sklearn.discriminant_analysis import StandardScaler
 from sklearn.ensemble import RandomForestClassifier
@@ -15,160 +14,229 @@ from sklearn.model_selection import train_test_split
 from sklearn.neighbors import KNeighborsClassifier
 from sklearn.tree import DecisionTreeClassifier
 
+checkbox_widgets = []
+
 def upload_file():
-    from gui import trv, count_label, path_label, target_combobox  # Di chuyển import vào hàm upload_to_GUI
+    from gui import count_label, path_label, target_combobox  # Di chuyển import vào hàm upload_to_GUI
     global file_name, str1, df, tree_list
-    f_types = [('CSV files', "*.csv"), ('All', "*.*")]
+    f_types = [('All', "*.*")]
     file = filedialog.askopenfilename(filetypes=f_types)
-    file_name = os.path.basename(file)
-    df = pd.read_csv(file)
-    tree_list = list(df)  # List of column names as header
-    str1 = "Rows:" + str(df.shape[0]) + " , Columns:" + str(df.shape[1])
-    
-    path_label.config(text=file_name)
-    count_label.config(text=str1)
-    trv.config(columns=tree_list)
-    
-    # Xóa tất cả các cột cũ trong treeview (nếu có)
-    for col in trv["columns"]:
-        trv.column(col, width=0)
-        trv.heading(col, text="")
-    
-    # Xóa tất cả các dòng cũ trong treeview (nếu có)
-    trv.delete(*trv.get_children())
-    
-    # Thiết lập các cột của treeview dựa trên tree_list
-    for col in tree_list:
-        trv.heading(col, text=col)
-        trv.column(col, width=100)  # Thiết lập độ rộng của cột
-    
-    # Thêm dữ liệu từ DataFrame vào treeview
-    for i, row in df.iterrows():
-        trv.insert("", "end", values=list(row))
-    
-    target_combobox["values"] = tree_list
+    # Nếu không chọn file thì thoát hàm
+    if not file:
+        return
+    else:
+        file_name = os.path.basename(file)
+        #nếu file là csv thì đọc pd.read csv còn excel thì pd.read_excel và các loại file khác
+        if file_name.endswith('.csv'):
+            df = pd.read_csv(file)
+        elif file_name.endswith('.xlsx'):
+            df = pd.read_excel(file)
+        else:
+            df = pd.read_csv(file)
+        tree_list = list(df)  # List of column names as header
+        str1 = "Rows:" + str(df.shape[0]) + " , Columns:" + str(df.shape[1])
+        
+        path_label.config(text=file_name)
+        count_label.config(text=str1)
+        trv_refresh()
+        target_combobox["values"] = tree_list
+
+def trv_refresh(r_set=None):  # Refresh the Treeview to reflect changes
+    from gui import dataTab, ttk, root
+    global df, tree_list
+    if r_set is None:
+        r_set = df.to_numpy().tolist()  # create list of list using rows
+
+    # Kiểm tra xem treeview đã tồn tại chưa, nếu có thì xóa đi
+    for widget in dataTab.winfo_children():
+        if isinstance(widget, ttk.Treeview):
+            widget.destroy()
+        if isinstance(widget, ttk.Scrollbar):
+            widget.destroy()
+
+    # Tạo Treeview mới
+    trv = ttk.Treeview(dataTab, selectmode='browse', height=10, show='headings')
+    trv['columns'] = tree_list if len(tree_list) <= 7 else tree_list[:7]  # Chỉ hiển thị 7 cột đầu tiên nếu có nhiều hơn 7 cột
+    trv.grid(row=5, column=1, columnspan=3, padx=5, pady=5, sticky='nsew')
+
+    # Định nghĩa các cột
+    for i in trv['columns']:
+        trv.column(i, width=90, anchor='c')
+        trv.heading(i, text=str(i))
+
+    # Thêm dữ liệu vào Treeview
+    for dt in r_set:
+        v = [r for r in dt]
+        trv.insert("", 'end', values=v)
+
+    # Thêm thanh scrollbar dọc
+    vs = ttk.Scrollbar(dataTab, orient="vertical", command=trv.yview)
+    trv.configure(yscrollcommand=vs.set)
+    vs.grid(row=5, column=4, sticky='ns')
+
+    # Nếu số lượng cột lớn hơn 7, thêm thanh scrollbar ngang
+    if len(tree_list) > 7:
+        hs = ttk.Scrollbar(dataTab, orient="horizontal", command=trv.xview)
+        trv.configure(xscrollcommand=hs.set)
+        hs.grid(row=6, column=1, columnspan=3, sticky='ew')
+
+        # Cập nhật lại các cột cho Treeview để bao gồm tất cả các cột
+        trv['columns'] = tree_list
+        for i in tree_list:
+            trv.column(i, width=90, anchor='c')
+            trv.heading(i, text=str(i))
+
+    dataTab.grid_rowconfigure(5, weight=1)
+    dataTab.grid_columnconfigure(1, weight=1)
+
+    # Gọi lại hàm my_columns để cập nhật các checkbox input
     my_columns()
+
 
 # Model functions
 def my_columns():
-    from gui import input_label_cb, modelTab
-    global i, my_ref, selected_checkboxes
-    i = 1  # to increase the column number
-    my_ref = {}  # to store references to checkboxes
+    from gui import input_label_cb, tk
+    global i, my_ref, selected_checkboxes, checkbox_widgets
+    i = 1  # Initialize a counter for row placement of checkboxes
+    my_ref = {}  # Dictionary to store references to checkboxes
     selected_checkboxes = []  # Initialize the list of selected checkboxes
     input_label_cb.config(text=" ")  # Remove the previous checkboxes
+
+    # Remove previous checkboxes
+    for cb in checkbox_widgets:
+        cb.destroy()
+    checkbox_widgets = []
+
+    # Loop through each column in the dataset
+    col_count = 0
+    row_count = 0
     for column in tree_list:
-        var = IntVar()
-        cb = Checkbutton(modelTab, text=column, variable=var)
-        cb.grid(row=i + 3, column=0, padx=5)
-        my_ref[column] = var
-        i += 1
-        # Append checkbox and its variable to the list
+        var = IntVar()  # Create a Tkinter variable to store checkbox state (0 or 1)
+        cb = Checkbutton(input_label_cb, text=column, variable=var)
+        cb.grid(row=row_count, column=col_count, padx=5, sticky='w')
+
+        my_ref[column] = var  # Store the checkbox variable reference in a dictionary
+        col_count += 1  # Increment column counter
+
+        # Move to next row after 2 columns
+        if col_count == 2:
+            col_count = 0
+            row_count += 1
+
+        # Append the checkbox widget and its variable to the list
         selected_checkboxes.append((column, var))
+        checkbox_widgets.append(cb)
+
+    input_label_cb.grid(row=3, column=0, padx=5, sticky=tk.W)
 
 def execute_model():
     from gui import model_combobox, target_combobox
     global model_train  # Di chuyển câu lệnh global lên đầu hàm
     target_variable = target_combobox.get()
     input_variables = [column for column, var in selected_checkboxes if var.get() == 1]
-    le = LabelEncoder()
-
-    # if input variable is categorical convert to numerical
-    for column in input_variables:
-        if df[column].dtype == "object":
-            df[column] = le.fit_transform(df[column])
-    if df[target_variable].dtype == "object":
-        df[target_variable] = le.fit_transform(df[target_variable])
     
-    # convert to list
-    input_variables = list(input_variables)
-    # delete item in list empty
-    input_variables = [x for x in input_variables if x != ""]
+    #nếu target_variable hoặc input_variables rỗng thì hiện cửa sổ thông báo và thoát hàm
+    if not target_variable or not input_variables:
+        messagebox.showinfo("Info", "Please select target and input variables")
+        return
+    else:
+        le = LabelEncoder()
+        # if input variable is categorical convert to numerical
+        for column in input_variables:
+            if df[column].dtype == "object":
+                df[column] = le.fit_transform(df[column])
+        if df[target_variable].dtype == "object":
+            df[target_variable] = le.fit_transform(df[target_variable])
+        
+        # convert to list
+        input_variables = list(input_variables)
+        # delete item in list empty
+        input_variables = [x for x in input_variables if x != ""]
 
-    print(target_variable)
-    print(input_variables)
-    X = df[input_variables]
-    y = df[target_variable]
-    X_train, X_test, y_train, y_test = train_test_split(
-        X, y, test_size=0.33, random_state=42
-    )
-    
-    print("X_train shape:", X_train.shape)
-    print("X_test shape:", X_test.shape)
-    
-    #future scaling
-    st_x= StandardScaler()    
-    X_train= st_x.fit_transform(X_train)    
-    X_test= st_x.transform(X_test)  
+        print(target_variable)
+        print(input_variables)
+        X = df[input_variables]
+        y = df[target_variable]
+        X_train, X_test, y_train, y_test = train_test_split(
+            X, y, test_size=0.33, random_state=42
+        )
+        
+        print("X_train shape:", X_train.shape)
+        print("X_test shape:", X_test.shape)
+        
+        #future scaling
+        st_x= StandardScaler()    
+        X_train= st_x.fit_transform(X_train)    
+        X_test= st_x.transform(X_test)  
 
-    model = model_combobox.get()
+        model = model_combobox.get()
 
-    print("Executing model...")
-    if model == "Logistic Regression":
-        model_train = LogisticRegression()
-        print("Logistic Regression")
-    elif model == "KNN":
-        model_train = KNeighborsClassifier()
-        print("KNN")
-    elif model == "Linear Regression":
-        model_train = LinearRegression()
-        print("Linear Regression")
-    elif model == "Decision Tree":
-        model_train = DecisionTreeClassifier(criterion="entropy")
-        print("Decision Tree")
-    elif model == "Random Forest":
-        model_train = RandomForestClassifier(n_estimators= 10, criterion="entropy")  
-        print("Random Forest")
-    
-    model_train.fit(X_train, y_train)
-    y_pred = model_train.predict(X_test)
-    print("y_pred:", y_pred)
+        print("Executing model...")
+        if model == "Logistic Regression":
+            model_train = LogisticRegression()
+            print("Logistic Regression")
+        elif model == "KNN":
+            model_train = KNeighborsClassifier()
+            print("KNN")
+        elif model == "Linear Regression":
+            model_train = LinearRegression()
+            print("Linear Regression")
+        elif model == "Decision Tree":
+            model_train = DecisionTreeClassifier(criterion="entropy")
+            print("Decision Tree")
+        elif model == "Random Forest":
+            model_train = RandomForestClassifier(n_estimators= 10, criterion="entropy")  
+            print("Random Forest")
+        
+        model_train.fit(X_train, y_train)
+        y_pred = model_train.predict(X_test)
+        print("y_pred:", y_pred)
 
-    if isinstance(model_train, LogisticRegression) or isinstance(model_train, KNeighborsClassifier):
-        try:
+        if isinstance(model_train, LogisticRegression) or isinstance(model_train, KNeighborsClassifier):
+            try:
+                accuracy = accuracy_score(y_test, y_pred)
+                # Confusion matrix
+                cm = confusion_matrix(y_test, y_pred)
+                plt.figure(figsize=(8, 6))
+                sns.heatmap(cm, annot=True, cmap="Blues", fmt="d")
+                plt.title("Confusion Matrix")
+                plt.xlabel("Predicted")
+                plt.ylabel("Actual")
+                plt.text(0.5, 0.95, f"Accuracy: {accuracy}", ha='center', va='top', transform=plt.gca().transAxes, fontsize=10)
+                plt.show()
+            except Exception as e:
+                print("Error:", e)
+        elif isinstance(model_train, LinearRegression):
+            # Calculate R-squared
+            r2 = r2_score(y_test, y_pred)
+            # Scatter plot
+            plt.scatter(y_test, y_pred)
+            plt.plot(y_test, y_test, color='red', linewidth=2)
+            plt.xlabel("Actual")
+            plt.ylabel("Predicted")
+            plt.title("Scatter plot")
+            plt.text(0.5, 0.95, f"R-squared: {r2}", ha='center', va='top', transform=plt.gca().transAxes, fontsize=10)
+            plt.show()
+        elif isinstance(model_train, DecisionTreeClassifier) or isinstance(model_train, RandomForestClassifier):
             accuracy = accuracy_score(y_test, y_pred)
-            # Confusion matrix
             cm = confusion_matrix(y_test, y_pred)
-            plt.figure(figsize=(8, 6))
-            sns.heatmap(cm, annot=True, cmap="Blues", fmt="d")
-            plt.title("Confusion Matrix")
-            plt.xlabel("Predicted")
-            plt.ylabel("Actual")
+            
+            X_set, y_set = X_test, y_test  
+            x1, x2 = np.meshgrid(np.arange(start = X_set[:, 0].min() - 1, stop = X_set[:, 0].max() + 1, step  =0.01), 
+                                np.arange(start = X_set[:, 1].min() - 1, stop = X_set[:, 1].max() + 1, step = 0.01))
+            plt.contourf(x1, x2, model_train.predict(np.array([x1.ravel(), x2.ravel()]).T).reshape(x1.shape),  
+                        alpha = 0.75, cmap = ListedColormap(('purple', 'green')))
+            plt.xlim(x1.min(), x1.max())
+            plt.ylim(x2.min(), x2.max())
+            for i, j in enumerate(np.unique(y_set)):
+                plt.scatter(X_set[y_set == j, 0], X_set[y_set == j, 1],  
+                            c = ListedColormap(('purple', 'green'))(i), label = j)
+            plt.title('Random Forest Classification')
+            plt.xlabel('Independent ')
+            plt.ylabel('Dependent')
+            plt.legend()
             plt.text(0.5, 0.95, f"Accuracy: {accuracy}", ha='center', va='top', transform=plt.gca().transAxes, fontsize=10)
             plt.show()
-        except Exception as e:
-            print("Error:", e)
-    elif isinstance(model_train, LinearRegression):
-        # Calculate R-squared
-        r2 = r2_score(y_test, y_pred)
-        # Scatter plot
-        plt.scatter(y_test, y_pred)
-        plt.plot(y_test, y_test, color='red', linewidth=2)
-        plt.xlabel("Actual")
-        plt.ylabel("Predicted")
-        plt.title("Scatter plot")
-        plt.text(0.5, 0.95, f"R-squared: {r2}", ha='center', va='top', transform=plt.gca().transAxes, fontsize=10)
-        plt.show()
-    elif isinstance(model_train, DecisionTreeClassifier) or isinstance(model_train, RandomForestClassifier):
-        accuracy = accuracy_score(y_test, y_pred)
-        cm = confusion_matrix(y_test, y_pred)
-        
-        X_set, y_set = X_test, y_test  
-        x1, x2 = np.meshgrid(np.arange(start = X_set[:, 0].min() - 1, stop = X_set[:, 0].max() + 1, step  =0.01), 
-                            np.arange(start = X_set[:, 1].min() - 1, stop = X_set[:, 1].max() + 1, step = 0.01))
-        plt.contourf(x1, x2, model_train.predict(np.array([x1.ravel(), x2.ravel()]).T).reshape(x1.shape),  
-                     alpha = 0.75, cmap = ListedColormap(('purple', 'green')))
-        plt.xlim(x1.min(), x1.max())
-        plt.ylim(x2.min(), x2.max())
-        for i, j in enumerate(np.unique(y_set)):
-            plt.scatter(X_set[y_set == j, 0], X_set[y_set == j, 1],  
-                        c = ListedColormap(('purple', 'green'))(i), label = j)
-        plt.title('Random Forest Classification')
-        plt.xlabel('Independent ')
-        plt.ylabel('Dependent')
-        plt.legend()
-        plt.text(0.5, 0.95, f"Accuracy: {accuracy}", ha='center', va='top', transform=plt.gca().transAxes, fontsize=10)
-        plt.show()
 
 # Visualize functions
 def selected_vs_type(event):

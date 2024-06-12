@@ -10,7 +10,7 @@ from matplotlib.colors import ListedColormap
 
 
 from sklearn.linear_model import LinearRegression, LogisticRegression
-from sklearn.metrics import accuracy_score, mean_squared_error, r2_score
+from sklearn.metrics import accuracy_score, r2_score
 from sklearn.model_selection import train_test_split
 from sklearn.neighbors import KNeighborsClassifier
 from sklearn.metrics import confusion_matrix 
@@ -18,9 +18,6 @@ from sklearn.preprocessing import LabelEncoder
 
 from sklearn.preprocessing import StandardScaler    
 from sklearn.ensemble import RandomForestClassifier  
-
-
-from tqdm.notebook import tqdm
 
 root = tk.Tk()
 root.title('App version 1.3.6')
