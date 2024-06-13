@@ -1,11 +1,13 @@
+from multiprocessing.reduction import duplicate
 import tkinter as tk
 from tkinter import ttk
 from turtle import st
+
+from click import edit
 from data_function import upload_file, execute_model, execute_visualize, selected_vs_type
 
 root = tk.Tk()
 root.title('App version 1.3.6')
-
 
 left_frame = tk.LabelFrame(root, text='Choose File')
 left_frame.grid(row=0, column=0, padx=10, pady=10)
@@ -14,17 +16,47 @@ right_frame = tk.LabelFrame(root)
 right_frame.grid(row=0, column=1, padx=10, pady=10)
 
 tabControl = ttk.Notebook(right_frame)
+cleanTab = ttk.Frame(tabControl)
 dataTab = ttk.Frame(right_frame)
 modelTab = ttk.Frame(tabControl)
 visualizeTab = ttk.Frame(tabControl)
-transformTab = ttk.Frame(tabControl)
 
 #tabControl.add(dataTab, text='Data')
+tabControl.add(cleanTab, text='Clean Data')
 tabControl.add(modelTab, text='Model')
 tabControl.add(visualizeTab, text='Visualize')
-tabControl.add(transformTab, text='Transform')
 dataTab.grid(row=0, column=0, padx=10, pady=10)
 tabControl.grid(row=1, column=0, padx=10, pady=10)
+
+# Clean tab
+clean_title = tk.Label(cleanTab, text="Choose Cleaning Method:")
+clean_title.grid(row=0, column=0, padx=5, pady=5, sticky=tk.W)
+
+duplicate_lbl = tk.Label(cleanTab, text="Duplicate Rows: ")
+duplicate_lbl.grid(row=1, column=0, padx=5, pady=5, sticky=tk.W)
+duplicate_btn = tk.Button(cleanTab, text="Remove Duplicate")
+duplicate_btn.grid(row=1, column=1, padx=5, pady=5, sticky=tk.W)
+
+null_lbl = tk.Label(cleanTab, text="Null Values: ")
+null_lbl.grid(row=2, column=0, padx=5, pady=5, sticky=tk.W)
+null_btn = tk.Button(cleanTab, text="Remove Null")
+null_btn.grid(row=2, column=1, padx=5, pady=5, sticky=tk.W)
+
+outlier_lbl = tk.Label(cleanTab, text="Outliers: ")
+outlier_lbl.grid(row=3, column=0, padx=5, pady=5, sticky=tk.W)
+outlier_btn = tk.Button(cleanTab, text="Remove Outliers")
+outlier_btn.grid(row=3, column=1, padx=5, pady=5, sticky=tk.W)
+
+other_lbl = tk.Label(cleanTab, text="Other: ")
+other_lbl.grid(row=4, column=0, padx=5, pady=5, sticky=tk.W)
+other_btn = tk.Button(cleanTab, text="Other Cleaning")
+other_btn.grid(row=4, column=1, padx=5, pady=5, sticky=tk.W)
+
+edit_btn = tk.Button(cleanTab, text="Edit Dataset")
+edit_btn.grid(row=5, column=0, padx=5, pady=5, sticky=tk.W)
+
+save_btn = tk.Button(cleanTab, text="Save Dataset")
+save_btn.grid(row=5, column=1, padx=5, pady=5, sticky=tk.W)
 
 # Data tab
 my_font1 = ('times', 12, 'bold')

@@ -1,6 +1,9 @@
 import os
 import numpy as np
 import pandas as pd
+from regex import F
+import scipy as sp
+from scipy import special
 import seaborn as sns
 from tkinter import Checkbutton, IntVar, filedialog, messagebox
 from matplotlib import pyplot as plt
@@ -40,6 +43,8 @@ def upload_file():
         count_label.config(text=str1)
         trv_refresh()
         target_combobox["values"] = tree_list
+        
+        check_dataset(df)
 
 def trv_refresh(r_set=None):  # Refresh the Treeview to reflect changes
     from gui import dataTab, ttk, root
@@ -55,13 +60,12 @@ def trv_refresh(r_set=None):  # Refresh the Treeview to reflect changes
             widget.destroy()
 
     # Tạo Treeview mới
-    trv = ttk.Treeview(dataTab, selectmode='browse', height=10, show='headings')
-    trv['columns'] = tree_list if len(tree_list) <= 7 else tree_list[:7]  # Chỉ hiển thị 7 cột đầu tiên nếu có nhiều hơn 7 cột
-    trv.grid(row=5, column=1, columnspan=3, padx=5, pady=5, sticky='nsew')
+    trv = ttk.Treeview(dataTab, selectmode='browse', height=10, show='headings', columns=tree_list)
+    trv.grid(row=5, column=1, columnspan=3, padx=10, pady=20)
 
     # Định nghĩa các cột
     for i in trv['columns']:
-        trv.column(i, width=90, anchor='c')
+        trv.column(i, width=90, anchor='c', stretch=False)
         trv.heading(i, text=str(i))
 
     # Thêm dữ liệu vào Treeview
@@ -74,24 +78,63 @@ def trv_refresh(r_set=None):  # Refresh the Treeview to reflect changes
     trv.configure(yscrollcommand=vs.set)
     vs.grid(row=5, column=4, sticky='ns')
 
-    # Nếu số lượng cột lớn hơn 7, thêm thanh scrollbar ngang
-    if len(tree_list) > 7:
-        hs = ttk.Scrollbar(dataTab, orient="horizontal", command=trv.xview)
-        trv.configure(xscrollcommand=hs.set)
-        hs.grid(row=6, column=1, columnspan=3, sticky='ew')
-
-        # Cập nhật lại các cột cho Treeview để bao gồm tất cả các cột
-        trv['columns'] = tree_list
-        for i in tree_list:
-            trv.column(i, width=90, anchor='c')
-            trv.heading(i, text=str(i))
-
-    dataTab.grid_rowconfigure(5, weight=1)
-    dataTab.grid_columnconfigure(1, weight=1)
+    # Thêm thanh scrollbar ngang chứa columns
+    hs = ttk.Scrollbar(dataTab, orient="horizontal", command=trv.xview)
+    trv.configure(xscrollcommand=hs.set)
+    hs.grid(row=6, column=0, columnspan=3, sticky='ew')
+    
+    trv.columnconfigure(0, weight=1)
+    trv.rowconfigure(0, weight=1)
 
     # Gọi lại hàm my_columns để cập nhật các checkbox input
     my_columns()
 
+#Clean data functions
+def check_dataset(df):
+    from gui import duplicate_lbl, null_lbl, outlier_lbl, other_lbl
+    # Check for duplicate rows
+    duplicate_rows = df.duplicated().sum()
+    if duplicate_rows > 0:
+        duplicate_lbl.config(text=f"Duplicate Rows: {duplicate_rows}")
+    else:
+        duplicate_lbl.config(text="Duplicate Rows: 0")
+        
+    # Check for null values
+    null_values = df.isnull().sum().sum()
+    if null_values > 0:
+        null_lbl.config(text=f"Null Values: {null_values}")
+    else:
+        null_lbl.config(text="Null Values: 0")
+        
+    # Check for outliers
+    outlier_count = 0
+    for column in df.columns:
+        if df[column].dtype in ['int64', 'float64']:
+            Q1 = df[column].quantile(0.25)
+            Q3 = df[column].quantile(0.75)
+            IQR = Q3 - Q1
+            lower_bound = Q1 - 1.5 * IQR
+            upper_bound = Q3 + 1.5 * IQR
+            outlier_count += len(df[(df[column] < lower_bound) | (df[column] > upper_bound)])
+    if outlier_count > 0:
+        outlier_lbl.config(text=f"Outliers: {outlier_count}")
+    else:
+        outlier_lbl.config(text="Outliers: 0")
+        
+    # Check for other issues(kiểm tra thử có kí tự đặc biệt nào không và các lỗi phổ biến khác)
+    other_issues = 0
+    special_char_issues = 0
+    for column in df.columns:
+        for value in df[column]:
+            if not str(value).isalnum():
+                special_char_issues += 1
+                break
+    other_issues = special_char_issues # + other common issues + other issues
+            
+    if other_issues > 0:
+        other_lbl.config(text=f"Other Issues: {other_issues}")
+    else:
+        other_lbl.config(text="Other Issues: 0")
 
 # Model functions
 def my_columns():
