@@ -1,11 +1,10 @@
 import os
+import tkinter as tk1
+import re
 import numpy as np
 import pandas as pd
-from regex import F
-import scipy as sp
-from scipy import special
 import seaborn as sns
-from tkinter import Checkbutton, IntVar, filedialog, messagebox
+from tkinter import Checkbutton, IntVar, filedialog, messagebox, simpledialog
 from matplotlib import pyplot as plt
 from matplotlib.colors import ListedColormap
 from sklearn.calibration import LabelEncoder
@@ -18,6 +17,49 @@ from sklearn.neighbors import KNeighborsClassifier
 from sklearn.tree import DecisionTreeClassifier
 
 checkbox_widgets = []
+
+def edit_column(column_name):
+    from gui import target_combobox
+    global df, trv, tree_list
+    try:
+        # Hiển thị cửa sổ để đổi tên cột được chọn
+        new_name = simpledialog.askstring("Edit Column", f"Enter new name for {column_name}")
+        if new_name:
+            df = df.rename(columns={column_name: new_name})
+            tree_list = list(df)
+            target_combobox["values"] = tree_list
+            trv_refresh()
+    except Exception as e:
+        print("Error:", e)
+        
+def delete_column(column_name):
+    from gui import target_combobox
+    global df, trv, tree_list
+    try:
+        # Hiển thị cửa sổ xác nhận xóa cột được chọn
+        confirm = messagebox.askokcancel("Delete Column", f"Are you sure you want to delete {column_name}?")
+        if confirm:
+            df = df.drop(column_name, axis=1)
+            tree_list = list(df)
+            target_combobox["values"] = tree_list
+            trv_refresh()
+    except Exception as e:
+        print("Error:", e)
+
+def show_popup(event):
+    global trv, df
+    try:
+        # Lấy index của cột được chọn
+        column = trv.identify_column(event.x)
+        # Lấy tên cột được chọn
+        column_name = trv.heading(column)['text']
+        # Hiển thị cửa sổ với 2 nút edit và delete với tên cột được chọn
+        popup_menu = tk1.Menu(trv, tearoff=0)
+        popup_menu.add_command(label="Edit", command=lambda: edit_column(column_name))
+        popup_menu.add_command(label="Delete", command=lambda: delete_column(column_name))
+        popup_menu.tk_popup(event.x_root, event.y_root)
+    except Exception as e:
+        print("Error:", e)
 
 def upload_file():
     from gui import count_label, path_label, target_combobox  # Di chuyển import vào hàm upload_to_GUI
@@ -47,8 +89,8 @@ def upload_file():
         check_dataset(df)
 
 def trv_refresh(r_set=None):  # Refresh the Treeview to reflect changes
-    from gui import dataTab, ttk, root
-    global df, tree_list
+    from gui import dataTab, ttk
+    global df, tree_list, trv
     if r_set is None:
         r_set = df.to_numpy().tolist()  # create list of list using rows
 
@@ -62,6 +104,7 @@ def trv_refresh(r_set=None):  # Refresh the Treeview to reflect changes
     # Tạo Treeview mới
     trv = ttk.Treeview(dataTab, selectmode='browse', height=10, show='headings', columns=tree_list)
     trv.grid(row=5, column=1, columnspan=3, padx=10, pady=20)
+    trv.bind("<Button-3>", show_popup)
 
     # Định nghĩa các cột
     for i in trv['columns']:
@@ -92,6 +135,7 @@ def trv_refresh(r_set=None):  # Refresh the Treeview to reflect changes
 #Clean data functions
 def check_dataset(df):
     from gui import duplicate_lbl, null_lbl, outlier_lbl, other_lbl
+    global duplicate_rows, null_values, outlier_count, other_issues, special_char_issues
     # Check for duplicate rows
     duplicate_rows = df.duplicated().sum()
     if duplicate_rows > 0:
@@ -121,20 +165,88 @@ def check_dataset(df):
     else:
         outlier_lbl.config(text="Outliers: 0")
         
-    # Check for other issues(kiểm tra thử có kí tự đặc biệt nào không và các lỗi phổ biến khác)
     other_issues = 0
     special_char_issues = 0
+    #Duyệt có các cột có kiểu dữ liệu chuỗi và kiểm tra xem có kí tự đặc biệt không 
     for column in df.columns:
-        for value in df[column]:
-            if not str(value).isalnum():
-                special_char_issues += 1
-                break
+        if df[column].dtype == 'object':
+            special_char_issues += len(df[df[column].str.contains(r'[^a-zA-Z0-9]', na=False)])
+    
     other_issues = special_char_issues # + other common issues + other issues
             
     if other_issues > 0:
         other_lbl.config(text=f"Other Issues: {other_issues}")
     else:
         other_lbl.config(text="Other Issues: 0")
+        
+def remove_duplicate():
+    global df, duplicate_rows
+    #Nếu duplicate_rows <= 0 thì hiện thông báo và thoát hàm
+    if duplicate_rows <= 0:
+        messagebox.showinfo("Info", "No duplicate rows found")
+        return
+    else:
+        df = df.drop_duplicates()
+        trv_refresh()
+        check_dataset(df)
+        
+def remove_null():
+    global df, null_values
+    #Nếu null_values <= 0 thì hiện thông báo và thoát hàm
+    if null_values <= 0:
+        messagebox.showinfo("Info", "No null values found")
+        return
+    else:
+        df = df.dropna()
+        trv_refresh()
+        check_dataset(df)
+        
+def remove_outliers():
+    global df, outlier_count
+    #Nếu outlier_count <= 0 thì hiện thông báo và thoát hàm
+    if outlier_count <= 0:
+        messagebox.showinfo("Info", "No outliers found")
+        return
+    else:
+        for column in df.columns:
+            if df[column].dtype in ['int64', 'float64']:
+                Q1 = df[column].quantile(0.25)
+                Q3 = df[column].quantile(0.75)
+                IQR = Q3 - Q1
+                lower_bound = Q1 - 1.5 * IQR
+                upper_bound = Q3 + 1.5 * IQR
+                df = df[(df[column] >= lower_bound) & (df[column] <= upper_bound)]
+        trv_refresh()
+        check_dataset(df)
+        
+def other_cleaning():
+    global df, other_issues, special_char_issues
+    # Nếu other_issues <= 0 thì hiện thông báo và thoát hàm
+    if other_issues <= 0:
+        messagebox.showinfo("Info", "No other issues found")
+        return
+    else:
+        # Nếu special_char_issues > 0 thì duyệt qua các cột và xóa các kí tự đặc biệt
+        if special_char_issues > 0:
+            for column in df.columns:
+                if df[column].dtype == 'object':  # Chỉ áp dụng cho các cột có kiểu dữ liệu chuỗi
+                    df[column] = df[column].apply(lambda x: re.sub(r'[^a-zA-Z0-9]', '', str(x)) if pd.notnull(x) else x)
+        trv_refresh()
+        check_dataset(df)
+        
+def save_dataset():
+    global df 
+    #Chọn nơi lưu file
+    save_file = filedialog.asksaveasfilename(defaultextension=".csv", filetypes=[("CSV files", "*.csv"), ("Excel files", "*.xlsx")])
+    if save_file:
+        #Lưu file dưới dạng csv hoặc excel
+        if save_file.endswith('.csv'):
+            df.to_csv(save_file, index=False)
+        elif save_file.endswith('.xlsx'):
+            df.to_excel(save_file, index=False)
+        else:
+            df.to_csv(save_file, index=False)
+        messagebox.showinfo("Info", "File saved successfully")
 
 # Model functions
 def my_columns():

@@ -1,10 +1,7 @@
-from multiprocessing.reduction import duplicate
 import tkinter as tk
 from tkinter import ttk
-from turtle import st
 
-from click import edit
-from data_function import upload_file, execute_model, execute_visualize, selected_vs_type
+from data_function import upload_file, execute_model, execute_visualize, selected_vs_type, remove_duplicate, remove_null, remove_outliers, other_cleaning, save_dataset
 
 root = tk.Tk()
 root.title('App version 1.3.6')
@@ -34,28 +31,25 @@ clean_title.grid(row=0, column=0, padx=5, pady=5, sticky=tk.W)
 
 duplicate_lbl = tk.Label(cleanTab, text="Duplicate Rows: ")
 duplicate_lbl.grid(row=1, column=0, padx=5, pady=5, sticky=tk.W)
-duplicate_btn = tk.Button(cleanTab, text="Remove Duplicate")
+duplicate_btn = tk.Button(cleanTab, text="Remove Duplicate", command=remove_duplicate)
 duplicate_btn.grid(row=1, column=1, padx=5, pady=5, sticky=tk.W)
 
 null_lbl = tk.Label(cleanTab, text="Null Values: ")
 null_lbl.grid(row=2, column=0, padx=5, pady=5, sticky=tk.W)
-null_btn = tk.Button(cleanTab, text="Remove Null")
+null_btn = tk.Button(cleanTab, text="Remove Null", command=remove_null)
 null_btn.grid(row=2, column=1, padx=5, pady=5, sticky=tk.W)
 
 outlier_lbl = tk.Label(cleanTab, text="Outliers: ")
 outlier_lbl.grid(row=3, column=0, padx=5, pady=5, sticky=tk.W)
-outlier_btn = tk.Button(cleanTab, text="Remove Outliers")
+outlier_btn = tk.Button(cleanTab, text="Remove Outliers", command=remove_outliers)
 outlier_btn.grid(row=3, column=1, padx=5, pady=5, sticky=tk.W)
 
 other_lbl = tk.Label(cleanTab, text="Other: ")
 other_lbl.grid(row=4, column=0, padx=5, pady=5, sticky=tk.W)
-other_btn = tk.Button(cleanTab, text="Other Cleaning")
+other_btn = tk.Button(cleanTab, text="Other Cleaning", command=other_cleaning)
 other_btn.grid(row=4, column=1, padx=5, pady=5, sticky=tk.W)
 
-edit_btn = tk.Button(cleanTab, text="Edit Dataset")
-edit_btn.grid(row=5, column=0, padx=5, pady=5, sticky=tk.W)
-
-save_btn = tk.Button(cleanTab, text="Save Dataset")
+save_btn = tk.Button(cleanTab, text="Save Dataset", command=save_dataset)
 save_btn.grid(row=5, column=1, padx=5, pady=5, sticky=tk.W)
 
 # Data tab
