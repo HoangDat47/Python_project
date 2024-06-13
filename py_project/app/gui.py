@@ -1,7 +1,7 @@
 import tkinter as tk
 from tkinter import ttk
 
-from data_function import upload_file, execute_model, execute_visualize, selected_vs_type, remove_duplicate, remove_null, replace_null, remove_outliers, other_cleaning, save_dataset
+from data_function import upload_file, execute_model, execute_visualize, selected_vs_type, remove_duplicate, remove_null, replace_null, remove_outliers, other_cleaning, save_dataset, on_target_combobox_select
 
 root = tk.Tk()
 root.title('App version 1.3.6')
@@ -80,6 +80,7 @@ target_label.grid(row=0, column=0, padx=5, sticky=tk.W)
 
 target_combobox = ttk.Combobox(modelTab)
 target_combobox.grid(row=1, column=0, padx=5, pady=5, sticky=tk.W)
+target_combobox.bind("<<ComboboxSelected>>", on_target_combobox_select)
 
 input_label = tk.Label(modelTab, text="Select Input Variables")
 input_label.grid(row=2, column=0, padx=5, sticky=tk.W)
