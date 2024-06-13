@@ -201,6 +201,27 @@ def remove_null():
         trv_refresh()
         check_dataset(df)
         
+def replace_null():
+    from gui import replace_null_combobox
+    global df
+    method = replace_null_combobox.get()
+    numeric_columns = df.select_dtypes(include=['number']).columns
+    
+    #Nếu null_values <= 0 thì hiện thông báo và thoát hàm
+    if null_values <= 0:
+        messagebox.showinfo("Info", "No null values found")
+        return
+    else:
+        if method == "Mean":
+            df[numeric_columns] = df[numeric_columns].fillna(df[numeric_columns].mean())
+        elif method == "Median":
+            df[numeric_columns] = df[numeric_columns].fillna(df[numeric_columns].median())
+        elif method == "Mode":
+            mode_values = df[numeric_columns].mode().iloc[0]
+            df[numeric_columns] = df[numeric_columns].fillna(mode_values)
+        trv_refresh()
+        check_dataset(df)
+        
 def remove_outliers():
     global df, outlier_count
     #Nếu outlier_count <= 0 thì hiện thông báo và thoát hàm
